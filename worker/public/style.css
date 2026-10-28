@@ -529,7 +529,12 @@ body[data-bubble="card"] .chat-msg.self .cm-bubble {
 .sticker-grid button { background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 6px; cursor: pointer; transition: border-color 140ms ease-out; }
 .sticker-grid button:hover { border-color: var(--accent); }
 .sticker-grid img { width: 100%; display: block; }
-.chat-msg .cm-img { max-width: 180px; border-radius: 10px; display: block; margin-top: 2px; }
+/* 聊天里的贴图：必须给 width（SVG 无内在尺寸时只有 max-width 会渲染成 0 宽） */
+.chat-msg .cm-img {
+  width: 150px; max-width: 100%; height: auto;
+  border-radius: 10px; display: block; margin-top: 2px;
+  background: var(--meter-bg);
+}
 .chat-log.dragover { outline: 2px dashed var(--accent); outline-offset: -6px; }
 
 /* 设置面板：更新区块 */
@@ -540,6 +545,7 @@ body[data-bubble="card"] .chat-msg.self .cm-bubble {
 }
 .update-ver { font-size: 13px; font-weight: 600; }
 .update-info { min-width: 0; }
+.update-btns { display: flex; gap: 8px; flex: none; }
 .update-log {
   margin-top: 8px; padding: 10px 12px; max-height: 160px; overflow-y: auto;
   background: var(--meter-bg); border: 1px solid var(--line); border-radius: 8px;

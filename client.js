@@ -868,7 +868,8 @@ const FISH_STICKER_DEFS = [
   { id: 'f_sleep', bg: '#7d9184', face: '<path d="M42 54 Q52 48 62 54" stroke="#123028" stroke-width="3" fill="none" stroke-linecap="round"/>', deco: '<text x="88" y="22" font-size="14">💤</text>' }
 ]
 function fishSvg(d) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><ellipse cx="56" cy="48" rx="42" ry="27" fill="${d.bg}"/><path d="M92 48 Q108 38 114 24 Q118 50 106 64 Q98 58 92 54 Z" fill="${d.bg}" opacity=".85"/><path d="M46 22 Q58 10 72 18 Q64 26 52 28 Z" fill="${d.bg}" opacity=".85"/><ellipse cx="40" cy="42" rx="7" ry="9" fill="#fff"/><ellipse cx="64" cy="42" rx="7" ry="9" fill="#fff"/><circle cx="41" cy="44" r="4" fill="#123028"/><circle cx="63" cy="44" r="4" fill="#123028"/><circle cx="39.5" cy="42" r="1.6" fill="#fff"/><circle cx="61.5" cy="42" r="1.6" fill="#fff"/><ellipse cx="24" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/><ellipse cx="86" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/>${d.face}${d.deco || ''}</svg>`
+  // 必须带 width/height：SVG 只有 viewBox 时在 <img> 里没有内在尺寸，会渲染成 0 宽（空白）
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90"><ellipse cx="56" cy="48" rx="42" ry="27" fill="${d.bg}"/><path d="M92 48 Q108 38 114 24 Q118 50 106 64 Q98 58 92 54 Z" fill="${d.bg}" opacity=".85"/><path d="M46 22 Q58 10 72 18 Q64 26 52 28 Z" fill="${d.bg}" opacity=".85"/><ellipse cx="40" cy="42" rx="7" ry="9" fill="#fff"/><ellipse cx="64" cy="42" rx="7" ry="9" fill="#fff"/><circle cx="41" cy="44" r="4" fill="#123028"/><circle cx="63" cy="44" r="4" fill="#123028"/><circle cx="39.5" cy="42" r="1.6" fill="#fff"/><circle cx="61.5" cy="42" r="1.6" fill="#fff"/><ellipse cx="24" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/><ellipse cx="86" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/>${d.face}${d.deco || ''}</svg>`
 }
 const FISH_URI_CACHE = {}
 function fishUri(id) {
@@ -1127,7 +1128,56 @@ function renderBubbleGrid() {
   })
 }
 
-/* ---------- 拉取更新（主进程执行 git pull） ---------- */
+/* ---------- 检查更新（GitHub Releases，无需 git / 无需代理） ---------- */
+async function doCheckUpdate() {
+  const btn = $('#checkBtn')
+  const hint = $('#updateHint')
+  const log = $('#updateLog')
+  btn.disabled = true
+  btn.textContent = '检查中…'
+  log.classList.remove('hidden')
+  const put = (txt, cls) => {
+    const d = document.createElement('div')
+    if (cls) d.className = cls
+    d.textContent = txt
+    log.appendChild(d)
+    log.scrollTop = log.scrollHeight
+  }
+  log.innerHTML = ''
+  try {
+    if (!window.moyuUpdate || !window.moyuUpdate.check) {
+      put('网页版不支持直接更新，请到 GitHub 下载：', 'err')
+      put('github.com/frankshare/moyu-squad/releases/latest', '')
+    } else {
+      put('正在查询 GitHub Releases…')
+      const r = await window.moyuUpdate.check()
+      if (!r.ok) {
+        put('查询失败：' + (r.msg || '未知错误'), 'err')
+        hint.textContent = '查询失败'
+      } else if (!r.hasUpdate) {
+        put('✅ 已是最新版本（' + r.latest + '）', 'ok')
+        hint.textContent = '当前已是最新版本'
+      } else {
+        put('发现新版本：v' + r.latest + '（当前 v' + r.current + '）', 'ok')
+        if (r.notes) { put(''); put('更新内容：'); put(r.notes) }
+        if (r.size) put('', 'ok')
+        const sizeMB = r.size ? (r.size / 1048576).toFixed(1) + ' MB' : ''
+        put('点击下方按钮用浏览器下载新版安装包' + (sizeMB ? '（' + sizeMB + '）' : ''))
+        const dl = document.createElement('button')
+        dl.className = 'btn btn-primary btn-sm'
+        dl.style.marginTop = '8px'
+        dl.textContent = '⬇ 下载 v' + r.latest
+        dl.addEventListener('click', () => window.moyuUpdate.openDownload(r.url))
+        log.appendChild(dl)
+        hint.textContent = '有新版 v' + r.latest + ' 可下载'
+      }
+    }
+  } catch (e) {
+    put('出错：' + e.message, 'err')
+  }
+  btn.disabled = false
+  btn.textContent = '检查更新'
+}
 async function doUpdate() {
   const btn = $('#updateBtn')
   const log = $('#updateLog')
@@ -1300,6 +1350,7 @@ $('#settingsClose').addEventListener('click', closeSettings)
 $('#settingsDone').addEventListener('click', closeSettings)
 $('#settingsModal').addEventListener('click', e => { if (e.target === $('#settingsModal')) closeSettings() })
 $('#updateBtn').addEventListener('click', doUpdate)
+$('#checkBtn').addEventListener('click', doCheckUpdate)
 
 $('#micTestBtn').addEventListener('click', toggleMicTest)
 $('#monitorToggle').addEventListener('change', e => {

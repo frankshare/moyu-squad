@@ -103,6 +103,48 @@ ipcMain.on('app-restart', () => {
   app.exit(0)
 })
 
+// 用系统默认浏览器打开下载链接
+ipcMain.on('app-open-url', (e, url) => {
+  if (typeof url === 'string' && /^https:\/\//.test(url)) {
+    require('electron').shell.openExternal(url)
+  }
+})
+
+// ── 检查更新（GitHub Releases，无需 git / 无需代理） ──
+const RELEASES_API = 'https://api.github.com/repos/frankshare/moyu-squad/releases/latest'
+const RELEASES_PAGE = 'https://github.com/frankshare/moyu-squad/releases/latest'
+ipcMain.handle('app-check-update', async () => {
+  try {
+    const r = await fetch(RELEASES_API, {
+      headers: { 'User-Agent': 'moyu-squad', 'Accept': 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(15000)
+    })
+    if (!r.ok) {
+      return { ok: false, msg: '查询失败 HTTP ' + r.status + '（GitHub API 限流，稍后再试）' }
+    }
+    const rel = await r.json()
+    const latest = String(rel.tag_name || '').replace(/^v/, '')
+    const cur = app.getVersion()
+    const cmp = (a, b) => {
+      const pa = a.split('.').map(Number), pb = b.split('.').map(Number)
+      for (let i = 0; i < 3; i++) { if ((pa[i] || 0) > (pb[i] || 0)) return 1; if ((pa[i] || 0) < (pb[i] || 0)) return -1 }
+      return 0
+    }
+    const asset = (rel.assets || []).find(a => /\.exe$/i.test(a.name))
+    return {
+      ok: true,
+      latest, current: cur,
+      hasUpdate: cmp(latest, cur) > 0,
+      url: asset ? asset.browser_download_url : RELEASES_PAGE,
+      size: asset ? asset.size : 0,
+      notes: (rel.body || '').trim().slice(0, 800),
+      pageUrl: rel.html_url || RELEASES_PAGE
+    }
+  } catch (e) {
+    return { ok: false, msg: '查询失败：' + (e.message || e) }
+  }
+})
+
 function showMain() {
   const win = BrowserWindow.getAllWindows()[0]
   if (win) {

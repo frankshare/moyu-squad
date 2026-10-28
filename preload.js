@@ -13,8 +13,11 @@ contextBridge.exposeInMainWorld('moyuWin', {
   close: () => ipcRenderer.send('win-close')
 })
 
-// 应用内更新：git pull + 重启
+// 应用内更新：检查 GitHub Releases / 拉取 git / 重启
 contextBridge.exposeInMainWorld('moyuUpdate', {
+  check: () => ipcRenderer.invoke('app-check-update'),
   update: () => ipcRenderer.invoke('app-update'),
-  restart: () => ipcRenderer.send('app-restart')
+  restart: () => ipcRenderer.send('app-restart'),
+  // 用系统默认浏览器打开下载页
+  openDownload: url => ipcRenderer.send('app-open-url', url)
 })
