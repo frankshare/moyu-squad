@@ -125,39 +125,129 @@
   "file": "zuitian.jpeg"
  },
  {
-  "id": "f_laugh",
-  "name": "f_laugh",
-  "file": "fish/f_laugh.svg",
-  "kind": "fish"
+  "id": "laugh_A",
+  "name": "大笑",
+  "file": "fish/a/laugh_A.svg",
+  "kind": "fish",
+  "style": "A"
  },
  {
-  "id": "f_ask",
-  "name": "f_ask",
-  "file": "fish/f_ask.svg",
-  "kind": "fish"
+  "id": "ask_A",
+  "name": "疑问",
+  "file": "fish/a/ask_A.svg",
+  "kind": "fish",
+  "style": "A"
  },
  {
-  "id": "f_speechless",
-  "name": "f_speechless",
-  "file": "fish/f_speechless.svg",
-  "kind": "fish"
+  "id": "speechless_A",
+  "name": "无语",
+  "file": "fish/a/speechless_A.svg",
+  "kind": "fish",
+  "style": "A"
  },
  {
-  "id": "f_angry",
-  "name": "f_angry",
-  "file": "fish/f_angry.svg",
-  "kind": "fish"
+  "id": "angry_A",
+  "name": "生气",
+  "file": "fish/a/angry_A.svg",
+  "kind": "fish",
+  "style": "A"
  },
  {
-  "id": "f_go",
-  "name": "f_go",
-  "file": "fish/f_go.svg",
-  "kind": "fish"
+  "id": "go_A",
+  "name": "冲鸭",
+  "file": "fish/a/go_A.svg",
+  "kind": "fish",
+  "style": "A"
  },
  {
-  "id": "f_sleep",
-  "name": "f_sleep",
-  "file": "fish/f_sleep.svg",
-  "kind": "fish"
+  "id": "sleep_A",
+  "name": "摸了",
+  "file": "fish/a/sleep_A.svg",
+  "kind": "fish",
+  "style": "A"
+ },
+ {
+  "id": "laugh_B",
+  "name": "大笑",
+  "file": "fish/b/laugh_B.svg",
+  "kind": "fish",
+  "style": "B"
+ },
+ {
+  "id": "ask_B",
+  "name": "疑问",
+  "file": "fish/b/ask_B.svg",
+  "kind": "fish",
+  "style": "B"
+ },
+ {
+  "id": "speechless_B",
+  "name": "无语",
+  "file": "fish/b/speechless_B.svg",
+  "kind": "fish",
+  "style": "B"
+ },
+ {
+  "id": "angry_B",
+  "name": "生气",
+  "file": "fish/b/angry_B.svg",
+  "kind": "fish",
+  "style": "B"
+ },
+ {
+  "id": "go_B",
+  "name": "冲鸭",
+  "file": "fish/b/go_B.svg",
+  "kind": "fish",
+  "style": "B"
+ },
+ {
+  "id": "sleep_B",
+  "name": "摸了",
+  "file": "fish/b/sleep_B.svg",
+  "kind": "fish",
+  "style": "B"
+ },
+ {
+  "id": "laugh_C",
+  "name": "大笑",
+  "file": "fish/c/laugh_C.svg",
+  "kind": "fish",
+  "style": "C"
+ },
+ {
+  "id": "ask_C",
+  "name": "疑问",
+  "file": "fish/c/ask_C.svg",
+  "kind": "fish",
+  "style": "C"
+ },
+ {
+  "id": "speechless_C",
+  "name": "无语",
+  "file": "fish/c/speechless_C.svg",
+  "kind": "fish",
+  "style": "C"
+ },
+ {
+  "id": "angry_C",
+  "name": "生气",
+  "file": "fish/c/angry_C.svg",
+  "kind": "fish",
+  "style": "C"
+ },
+ {
+  "id": "go_C",
+  "name": "冲鸭",
+  "file": "fish/c/go_C.svg",
+  "kind": "fish",
+  "style": "C"
+ },
+ {
+  "id": "sleep_C",
+  "name": "摸了",
+  "file": "fish/c/sleep_C.svg",
+  "kind": "fish",
+  "style": "C"
  }
 ]

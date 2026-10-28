@@ -850,10 +850,11 @@ const EMOJIS = [
   '💪','🤝','✌️','🤙','🐟','🎉','🔥','💯','❓','❗',
   '💤','🎮','🏆','🍺','🀄','🎲'
 ]
-// 内置摸鱼贴图：SVG 静态资源（stickers/fish/*.svg），随 manifest 一起加载。
+// 内置摸鱼贴图：SVG 静态资源（stickers/fish/<style>/*.svg），随 manifest 一起加载。
 // 用静态文件而非 Blob/data URI：Chromium 不渲染 <img src="data:image/svg+xml">，
 // 而 Blob URL 是本机地址无法跨端传递；静态资源两端都能直接引用。
 let FISH_STICKERS = []
+function fishStyle() { return localStorage.getItem('moyu.fishstyle') || 'A' }
 function fishUri(id) {
   const st = LONG_STICKERS.find(s => s.id === id)
   return st ? stickerUrl(st.file) : ''
@@ -960,9 +961,10 @@ function renderPickers() {
   const fg = $('#fishGrid')
   fg.innerHTML = ''
   FISH_STICKERS.forEach(d => {
+    if (d.style !== fishStyle()) return
     const b = document.createElement('button')
     b.title = d.name || d.id
-    b.innerHTML = `<img src="${fishUri(d.id)}" alt="${d.id}" />`
+    b.innerHTML = `<img src="${fishUri(d.id)}" alt="${d.name}" />`
     b.addEventListener('click', () => { sendSticker(d); $('#pickerPanel').classList.add('hidden') })
     fg.appendChild(b)
   })
@@ -1058,6 +1060,7 @@ function openSettings() {
   refreshDevices()
   renderThemeGrid()
   renderBubbleGrid()
+  renderFishStyleGrid()
   setupUpdateUI()
   $('#masterVol').value = Math.round(state.masterVol * 100)
   $('#masterVolVal').textContent = Math.round(state.masterVol * 100) + '%'
@@ -1105,6 +1108,19 @@ function renderBubbleGrid() {
     card.innerHTML = `<span class="bubble-demo"><i class="bd-${b.id}"></i></span><span>${b.name}</span>`
     card.addEventListener('click', () => { applyBubbleStyle(b.id); renderBubbleGrid() })
     grid.appendChild(card)
+  })
+}
+function renderFishStyleGrid() {
+  const grid = $('#fishStyleGrid')
+  if (!grid) return
+  const cur = fishStyle()
+  grid.querySelectorAll('.seg-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.fs === cur)
+    b.addEventListener('click', () => {
+      localStorage.setItem('moyu.fishstyle', b.dataset.fs)
+      renderFishStyleGrid()
+      renderPickers()
+    })
   })
 }
 

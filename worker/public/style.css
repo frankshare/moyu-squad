@@ -472,6 +472,8 @@ body[data-bubble="card"] .chat-msg.self .cm-bubble {
   background: var(--panel);
 }
 .seg { display: flex; background: var(--card-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 3px; }
+.seg-wide { width: 100%; }
+.seg-wide .seg-item { flex: 1; }
 .seg-item {
   padding: 7px 13px; font-size: 12px; font-weight: 600; font-family: inherit;
   color: var(--dim); background: none; border: none; border-radius: 7px; cursor: pointer;
@@ -529,11 +531,10 @@ body[data-bubble="card"] .chat-msg.self .cm-bubble {
 .sticker-grid button { background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 5px; cursor: pointer; transition: border-color 140ms ease-out; }
 .sticker-grid button:hover { border-color: var(--accent); }
 .sticker-grid img { width: 100%; display: block; border-radius: 6px; }
-/* 聊天里的贴图：必须给 width（SVG 无内在尺寸时只有 max-width 会渲染成 0 宽） */
+/* 聊天里的贴图：透明底（不要方块底图），SVG 必须给 width（无内在尺寸会渲染成 0 宽） */
 .chat-msg .cm-img {
-  width: 104px; max-width: 100%; height: auto;
-  border-radius: 8px; display: block; margin-top: 2px;
-  background: var(--meter-bg);
+  width: 84px; max-width: 100%; height: auto;
+  display: block; margin-top: 2px;
 }
 .chat-log.dragover { outline: 2px dashed var(--accent); outline-offset: -6px; }
 

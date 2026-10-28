@@ -1,7 +1,7 @@
 {
   "name": "moyu-squad",
   "productName": "摸鱼小队",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "摸鱼小队 — 无广告、轻量的开黑语音桌面应用",
   "main": "main.js",
   "license": "MIT",
