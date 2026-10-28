@@ -658,7 +658,7 @@ function handleMsg(m) {
       break
     case 'img':
       if (m.from !== state.myId) {
-        // sid = 内置贴图 id（龙图/摸鱼都在 manifest 里），data = 自定义图片 data URI
+        // sid = 内置龙图 id，data = 自定义图片 data URI
         let src = m.data || ''
         if (m.sid) {
           const f = LONG_STICKERS.find(s => s.id === m.sid)
@@ -850,15 +850,6 @@ const EMOJIS = [
   '💪','🤝','✌️','🤙','🐟','🎉','🔥','💯','❓','❗',
   '💤','🎮','🏆','🍺','🀄','🎲'
 ]
-// 内置摸鱼贴图：SVG 静态资源（stickers/fish/<style>/*.svg），随 manifest 一起加载。
-// 用静态文件而非 Blob/data URI：Chromium 不渲染 <img src="data:image/svg+xml">，
-// 而 Blob URL 是本机地址无法跨端传递；静态资源两端都能直接引用。
-let FISH_STICKERS = []
-function fishStyle() { return localStorage.getItem('moyu.fishstyle') || 'A' }
-function fishUri(id) {
-  const st = LONG_STICKERS.find(s => s.id === id)
-  return st ? stickerUrl(st.file) : ''
-}
 // 熊猫头龙图清单（script 注入，file:// 下 fetch 会被拦）
 let LONG_STICKERS = []
 // 调试用：暴露状态，便于排查链路质量
@@ -885,14 +876,12 @@ window.__moyuPeerStats = async () => {
 async function loadLongStickers() {
   if (window.MOYU_STICKERS && window.MOYU_STICKERS.length) {
     LONG_STICKERS = window.MOYU_STICKERS
-    FISH_STICKERS = LONG_STICKERS.filter(s => s.kind === 'fish')
     return
   }
   try {
     const r = await fetch('stickers/manifest.json', { signal: AbortSignal.timeout(5000) })
     if (r.ok) {
       LONG_STICKERS = await r.json()
-      FISH_STICKERS = LONG_STICKERS.filter(s => s.kind === 'fish')
     }
   } catch (e) { log('龙图清单加载失败', e) }
 }
@@ -910,16 +899,6 @@ function appendImg(name, data, self, sid) {
   div.querySelector('img').src = data
   log.appendChild(div)
   log.scrollTop = log.scrollHeight
-}
-function sendSticker(def) {
-  if (!state.inRoom) return
-  const uri = fishUri(def.id)
-  if (!uri) return
-  appendImg(state.name, uri, true)
-  send({ t: 'img', sid: def.id })
-}// 贴图资源路径：网页版同源，桌面端 file:// 用相对路径
-function stickerUrl(file) {
-  return 'stickers/' + file
 }
 function sendLongSticker(st) {
   if (!state.inRoom) return
@@ -957,17 +936,6 @@ function renderPickers() {
     })
     eg.appendChild(b)
   })
-  // 摸鱼贴图（内置 SVG，用 Blob URL 渲染）
-  const fg = $('#fishGrid')
-  fg.innerHTML = ''
-  FISH_STICKERS.forEach(d => {
-    if (d.style !== fishStyle()) return
-    const b = document.createElement('button')
-    b.title = d.name || d.id
-    b.innerHTML = `<img src="${fishUri(d.id)}" alt="${d.name}" />`
-    b.addEventListener('click', () => { sendSticker(d); $('#pickerPanel').classList.add('hidden') })
-    fg.appendChild(b)
-  })
   // 熊猫头龙图（按 ID 发送）
   const sg = $('#stickerGrid')
   sg.innerHTML = ''
@@ -989,10 +957,8 @@ function togglePicker() {
 function showPickerTab(which) {
   $('#emojiGrid').classList.toggle('hidden', which !== 'emoji')
   $('#stickerGrid').classList.toggle('hidden', which !== 'sticker')
-  $('#fishGrid').classList.toggle('hidden', which !== 'fish')
   $('#tabEmoji').classList.toggle('active', which === 'emoji')
   $('#tabSticker').classList.toggle('active', which === 'sticker')
-  $('#tabFish').classList.toggle('active', which === 'fish')
 }
 
 /* ---------- 音量动画（含噪声门节拍） ---------- */
@@ -1060,7 +1026,6 @@ function openSettings() {
   refreshDevices()
   renderThemeGrid()
   renderBubbleGrid()
-  renderFishStyleGrid()
   setupUpdateUI()
   $('#masterVol').value = Math.round(state.masterVol * 100)
   $('#masterVolVal').textContent = Math.round(state.masterVol * 100) + '%'
@@ -1108,19 +1073,6 @@ function renderBubbleGrid() {
     card.innerHTML = `<span class="bubble-demo"><i class="bd-${b.id}"></i></span><span>${b.name}</span>`
     card.addEventListener('click', () => { applyBubbleStyle(b.id); renderBubbleGrid() })
     grid.appendChild(card)
-  })
-}
-function renderFishStyleGrid() {
-  const grid = $('#fishStyleGrid')
-  if (!grid) return
-  const cur = fishStyle()
-  grid.querySelectorAll('.seg-item').forEach(b => {
-    b.classList.toggle('active', b.dataset.fs === cur)
-    b.addEventListener('click', () => {
-      localStorage.setItem('moyu.fishstyle', b.dataset.fs)
-      renderFishStyleGrid()
-      renderPickers()
-    })
   })
 }
 
@@ -1351,7 +1303,6 @@ $('#chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendCh
 $('#emojiBtn').addEventListener('click', togglePicker)
 $('#tabEmoji').addEventListener('click', () => showPickerTab('emoji'))
 $('#tabSticker').addEventListener('click', () => showPickerTab('sticker'))
-$('#tabFish').addEventListener('click', () => showPickerTab('fish'))
 $('#chatLog').addEventListener('dragover', e => { e.preventDefault(); $('#chatLog').classList.add('dragover') })
 $('#chatLog').addEventListener('dragleave', () => $('#chatLog').classList.remove('dragover'))
 $('#chatLog').addEventListener('drop', e => { e.preventDefault(); $('#chatLog').classList.remove('dragover'); [...e.dataTransfer.files].forEach(sendImageFile) })
@@ -1473,7 +1424,7 @@ function initHoverPreview() {
   }
   const hide = () => { box.classList.add('hidden'); cur = null }
   document.addEventListener('mouseover', e => {
-    const btn = e.target.closest && e.target.closest('#stickerGrid button, #fishGrid button')
+    const btn = e.target.closest && e.target.closest('#stickerGrid button')
     if (!btn) return
     const imgEl = btn.querySelector('img')
     if (!imgEl) return
@@ -1489,7 +1440,7 @@ function initHoverPreview() {
     box.style.top = Math.max(8, top) + 'px'
   })
   document.addEventListener('mouseout', e => {
-    const btn = e.target.closest && e.target.closest('#stickerGrid button, #fishGrid button')
+    const btn = e.target.closest && e.target.closest('#stickerGrid button')
     if (btn) hide()
   })
   document.addEventListener('click', hide, true)
