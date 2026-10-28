@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2e3138"/>
+      <stop offset="1" stop-color="#17181d"/>
+    </linearGradient>
+    <radialGradient id="lift" cx="0.5" cy="0.38" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="soft2" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <linearGradient id="cream" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#FCF9F2"/>
+      <stop offset="0.6" stop-color="#F1ECDF"/>
+      <stop offset="1" stop-color="#D8D1BF"/>
+    </linearGradient>
+    <clipPath id="tile">
+      <rect x="36" y="36" width="952" height="952" rx="270"/>
+    </clipPath>
+  </defs>
+
+  <!-- 圆润容器（squircle 磁贴） -->
+  <g clip-path="url(#tile)">
+    <rect x="36" y="36" width="952" height="952" fill="url(#bg)" filter="url(#noise)"/>
+    <rect x="36" y="36" width="952" height="952" fill="url(#lift)"/>
+
+    <!-- 底部投影 -->
+    <ellipse cx="500" cy="806" rx="330" ry="46" fill="#000000" opacity="0.45" filter="url(#soft)"/>
+
+    <!-- ═══ my（奶油白粗字，笔画加粗更圆润） ═══ -->
+    <g fill="none" stroke="#101216" stroke-width="150" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 196 700 L 196 478 Q 196 362 314 362 Q 428 362 428 478 L 428 700"/>
+      <path d="M 428 478 Q 428 362 546 362 Q 658 362 658 478 L 658 616"/>
+      <path d="M 658 434 L 802 594"/>
+      <path d="M 802 360 L 802 590 L 802 682 Q 802 778 722 810 Q 654 834 604 800"/>
+    </g>
+    <g fill="none" stroke="url(#cream)" stroke-width="96" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 196 700 L 196 478 Q 196 362 314 362 Q 428 362 428 478 L 428 700"/>
+      <path d="M 428 478 Q 428 362 546 362 Q 658 362 658 478 L 658 616"/>
+      <path d="M 658 434 L 802 594"/>
+      <path d="M 802 360 L 802 590 L 802 682 Q 802 778 722 810 Q 654 834 604 800"/>
+    </g>
+    <!-- 底部反弹光 -->
+    <g fill="none" stroke="#8f8a7c" stroke-width="10" stroke-linecap="round" opacity="0.32" filter="url(#soft2)">
+      <path d="M 222 686 L 222 484"/>
+      <path d="M 454 664 L 454 504"/>
+    </g>
+    <!-- 顶部高光 -->
+    <g fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" opacity="0.8" filter="url(#soft2)">
+      <path d="M 224 674 L 224 480 Q 224 388 314 388 Q 404 388 404 478"/>
+      <path d="M 452 478 Q 452 388 546 388 L 632 388"/>
+      <path d="M 776 386 L 776 546"/>
+    </g>
+    <!-- 鱼钩点睛 + 音波 + 星（青绿点缀） -->
+    <circle cx="626" cy="792" r="16" fill="#2DD4A7"/>
+    <path d="M 150 726 A 40 40 0 0 1 136 772" fill="none" stroke="#2DD4A7" stroke-width="11" stroke-linecap="round" opacity="0.7"/>
+    <path d="M 110 706 A 76 76 0 0 1 94 782" fill="none" stroke="#2DD4A7" stroke-width="9" stroke-linecap="round" opacity="0.45"/>
+    <path d="M 862 226 Q 878 242 894 258 Q 878 274 862 290 Q 846 274 830 258 Q 846 242 862 226 Z" fill="#2DD4A7" opacity="0.95"/>
+  </g>
+  <!-- 容器细描边 -->
+  <rect x="36" y="36" width="952" height="952" rx="270" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2"/>
+</svg>

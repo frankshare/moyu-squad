@@ -1,0 +1,52 @@
+{
+  "name": "moyu-squad",
+  "productName": "摸鱼小队",
+  "version": "0.1.0",
+  "description": "摸鱼小队 — 无广告、轻量的开黑语音桌面应用",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "server": "node server/index.js",
+    "dist": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "build": {
+    "appId": "tools.moyu.squad",
+    "productName": "摸鱼小队",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "client.js",
+      "style.css",
+      "build/icon.png",
+      "stickers/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "deleteAppDataOnUninstall": true,
+      "artifactName": "摸鱼小队-Setup-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  }
+}

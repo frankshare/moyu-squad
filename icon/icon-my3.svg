@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2c2f36"/>
+      <stop offset="1" stop-color="#181a1f"/>
+    </linearGradient>
+    <radialGradient id="lift" cx="0.5" cy="0.4" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="soft2" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <!-- 奶油白黏土字渐变 -->
+    <linearGradient id="cream" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#FBF8F1"/>
+      <stop offset="0.6" stop-color="#F0EBDD"/>
+      <stop offset="1" stop-color="#D9D2C0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景层 -->
+  <rect width="1024" height="1024" fill="url(#bg)" filter="url(#noise)"/>
+  <rect width="1024" height="1024" fill="url(#lift)"/>
+
+  <!-- 底部投影 -->
+  <ellipse cx="500" cy="800" rx="330" ry="44" fill="#000000" opacity="0.45" filter="url(#soft)"/>
+
+  <!-- ═══ my（奶油白粗字，y 带左臂 + 鱼钩降部） ═══ -->
+  <!-- 深色描边底 -->
+  <g fill="none" stroke="#101216" stroke-width="142" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 196 706 L 196 474 Q 196 356 316 356 Q 432 356 432 474 L 432 706"/>
+    <path d="M 432 474 Q 432 356 548 356 Q 660 356 660 474 L 660 620"/>
+    <path d="M 660 430 L 806 596"/>
+    <path d="M 806 356 L 806 596 L 806 688 Q 806 786 724 818 Q 654 842 602 806"/>
+  </g>
+  <!-- 主笔画（奶油白） -->
+  <g fill="none" stroke="url(#cream)" stroke-width="88" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 196 706 L 196 474 Q 196 356 316 356 Q 432 356 432 474 L 432 706"/>
+    <path d="M 432 474 Q 432 356 548 356 Q 660 356 660 474 L 660 620"/>
+    <path d="M 660 430 L 806 596"/>
+    <path d="M 806 356 L 806 596 L 806 688 Q 806 786 724 818 Q 654 842 602 806"/>
+  </g>
+  <!-- 底部环境反弹光（充气感） -->
+  <g fill="none" stroke="#8f8a7c" stroke-width="10" stroke-linecap="round" opacity="0.35" filter="url(#soft2)">
+    <path d="M 220 690 L 220 480"/>
+    <path d="M 456 660 L 456 500"/>
+  </g>
+  <!-- 顶部高光 -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" opacity="0.75" filter="url(#soft2)">
+    <path d="M 222 680 L 222 478 Q 222 382 316 382 Q 406 382 406 476"/>
+    <path d="M 458 476 Q 458 382 548 382 L 634 382"/>
+    <path d="M 780 382 L 780 550"/>
+  </g>
+  <!-- 鱼钩倒刺点睛（品牌青绿点缀） -->
+  <circle cx="622" cy="796" r="17" fill="#2DD4A7"/>
+
+  <!-- 签名四角星（青绿点缀） -->
+  <path d="M 872 232 Q 888 248 904 264 Q 888 280 872 296 Q 856 280 840 264 Q 856 248 872 232 Z" fill="#2DD4A7" opacity="0.95"/>
+  <path d="M 148 726 A 42 42 0 0 1 132 776" fill="none" stroke="#2DD4A7" stroke-width="12" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 104 704 A 80 80 0 0 1 86 786" fill="none" stroke="#2DD4A7" stroke-width="10" stroke-linecap="round" opacity="0.45"/>
+</svg>

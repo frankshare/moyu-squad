@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a2338"/>
+      <stop offset="1" stop-color="#0a0d16"/>
+    </linearGradient>
+    <radialGradient id="lift" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.52" r="0.55">
+      <stop offset="0" stop-color="#2DD4A7" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#2DD4A7" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="soft2" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <linearGradient id="clay" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#5ff0c4"/>
+      <stop offset="0.55" stop-color="#2dd4a7"/>
+      <stop offset="1" stop-color="#128a68"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景层 -->
+  <rect width="1024" height="1024" fill="url(#bg)" filter="url(#noise)"/>
+  <rect width="1024" height="1024" fill="url(#lift)"/>
+  <circle cx="512" cy="540" r="430" fill="url(#glow)"/>
+  <rect x="-200" y="220" width="1500" height="110" fill="#FFFFFF" opacity="0.04" transform="rotate(30 512 512)" filter="url(#soft)"/>
+
+  <!-- 底部投影 -->
+  <ellipse cx="500" cy="800" rx="330" ry="44" fill="#04070e" opacity="0.55" filter="url(#soft)"/>
+
+  <!-- ═══ my（y 带左臂，左臂接在 m 第三腿上 = 结合） ═══ -->
+  <!-- 深色贴纸底 -->
+  <g fill="none" stroke="#0F172B" stroke-width="138" stroke-linecap="round" stroke-linejoin="round">
+    <!-- m -->
+    <path d="M 196 706 L 196 474 Q 196 356 316 356 Q 432 356 432 474 L 432 706"/>
+    <path d="M 432 474 Q 432 356 548 356 Q 660 356 660 474 L 660 620"/>
+    <!-- y：左臂从 m 第三腿上斜下交汇 + 右竖笔沉到基线下钩成鱼钩 -->
+    <path d="M 660 430 L 806 596"/>
+    <path d="M 806 356 L 806 596 L 806 688 Q 806 786 724 818 Q 654 842 602 806"/>
+  </g>
+  <!-- 主笔画 -->
+  <g fill="none" stroke="url(#clay)" stroke-width="88" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 196 706 L 196 474 Q 196 356 316 356 Q 432 356 432 474 L 432 706"/>
+    <path d="M 432 474 Q 432 356 548 356 Q 660 356 660 474 L 660 620"/>
+    <path d="M 660 430 L 806 596"/>
+    <path d="M 806 356 L 806 596 L 806 688 Q 806 786 724 818 Q 654 842 602 806"/>
+  </g>
+  <!-- 鱼钩倒刺点睛 -->
+  <circle cx="622" cy="796" r="16" fill="url(#clay)"/>
+  <!-- 上缘高光 -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" opacity="0.5" filter="url(#soft2)">
+    <path d="M 220 682 L 220 476 Q 220 380 316 380 Q 408 380 408 476"/>
+    <path d="M 456 476 Q 456 380 548 380 L 636 380"/>
+    <path d="M 782 380 L 782 560"/>
+    <path d="M 686 452 L 774 566"/>
+  </g>
+
+  <!-- 音波泡泡（左下点缀） -->
+  <path d="M 148 748 A 42 42 0 0 1 132 798" fill="none" stroke="#7EE8CB" stroke-width="13" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 100 726 A 84 84 0 0 1 80 812" fill="none" stroke="#7EE8CB" stroke-width="11" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- 签名四角星 -->
+  <path d="M 892 208 Q 908 224 924 240 Q 908 256 892 272 Q 876 256 860 240 Q 876 224 892 208 Z" fill="#FFFFFF" opacity="0.95"/>
+  <path d="M 168 226 Q 178 236 188 246 Q 178 256 168 266 Q 158 256 148 246 Q 158 236 148 226 Z" fill="#7EE8CB" opacity="0.6"/>
+</svg>

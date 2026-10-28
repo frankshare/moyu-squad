@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- 深蓝夜空背景 -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#182036"/>
+      <stop offset="1" stop-color="#0b0e18"/>
+    </linearGradient>
+    <radialGradient id="lift" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#2DD4A7" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#2DD4A7" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+    <filter id="soft2" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <!-- 鱼 body clay 渐变 -->
+    <linearGradient id="fish" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#4ce6ba"/>
+      <stop offset="1" stop-color="#1c9e7c"/>
+    </linearGradient>
+    <linearGradient id="fin" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#38d0a4"/>
+      <stop offset="1" stop-color="#188567"/>
+    </linearGradient>
+    <!-- 麦克风金属网罩 -->
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FDFDFE"/><stop offset="0.3" stop-color="#C9CED8"/>
+      <stop offset="0.55" stop-color="#9BA1AD"/><stop offset="0.8" stop-color="#CDD2DB"/>
+      <stop offset="1" stop-color="#EFF1F5"/>
+    </linearGradient>
+    <linearGradient id="handle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a5262"/>
+      <stop offset="1" stop-color="#232a38"/>
+    </linearGradient>
+    <radialGradient id="glass" cx="0.32" cy="0.22" r="0.9">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 背景层 -->
+  <rect width="1024" height="1024" fill="url(#bg)" filter="url(#noise)"/>
+  <rect width="1024" height="1024" fill="url(#lift)"/>
+  <circle cx="512" cy="520" r="400" fill="url(#glow)"/>
+  <!-- 斜光带 -->
+  <rect x="-200" y="120" width="1500" height="130" fill="#FFFFFF" opacity="0.05" transform="rotate(32 512 512)" filter="url(#soft)"/>
+
+  <!-- 鱼接触投影 -->
+  <ellipse cx="512" cy="836" rx="270" ry="58" fill="#050810" opacity="0.5" filter="url(#soft)"/>
+
+  <!-- 尾鳍（右侧探出，出血） -->
+  <path d="M 800 520 Q 900 470 960 500 Q 950 590 850 640 Q 820 600 800 560 Z" fill="url(#fin)"/>
+
+  <!-- 贴纸白边（鱼身放大描边） -->
+  <ellipse cx="512" cy="570" rx="322" ry="252" fill="none" stroke="#FFFFFF" stroke-width="42"/>
+
+  <!-- 背鳍 -->
+  <path d="M 380 356 Q 470 280 620 340 Q 590 380 540 396 Q 470 380 380 356 Z" fill="url(#fin)"/>
+
+  <!-- 鱼身（压扁 1.3:1） -->
+  <ellipse cx="512" cy="570" rx="302" ry="232" fill="url(#fish)"/>
+  <!-- 底部环境反弹光 -->
+  <ellipse cx="512" cy="736" rx="200" ry="46" fill="#FFFFFF" opacity="0.16" filter="url(#soft2)"/>
+  <!-- 顶部大软高光 -->
+  <ellipse cx="420" cy="438" rx="120" ry="58" fill="#FFFFFF" opacity="0.5" filter="url(#soft2)" transform="rotate(-18 420 438)"/>
+
+  <!-- 左胸鳍（抱麦克风） -->
+  <path d="M 300 640 Q 260 700 300 760 Q 360 760 390 700 Q 356 664 300 640 Z" fill="url(#fin)"/>
+  <!-- 右胸鳍 -->
+  <path d="M 700 640 Q 740 700 700 760 Q 640 760 612 700 Q 646 664 700 640 Z" fill="url(#fin)"/>
+
+  <!-- 眼睛（巨大杏仁眼 + 双高光） -->
+  <ellipse cx="418" cy="540" rx="62" ry="74" fill="#FFFFFF"/>
+  <ellipse cx="592" cy="540" rx="62" ry="74" fill="#FFFFFF"/>
+  <circle cx="424" cy="552" r="40" fill="#123028"/>
+  <circle cx="586" cy="552" r="40" fill="#123028"/>
+  <circle cx="410" cy="536" r="15" fill="#FFFFFF"/>
+  <circle cx="596" cy="536" r="11" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="441" cy="576" r="6" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="576" cy="576" r="6" fill="#FFFFFF" opacity="0.7"/>
+  <!-- 腮红 -->
+  <circle cx="336" cy="624" r="30" fill="#FF9EB0" opacity="0.7" filter="url(#soft)"/>
+  <circle cx="676" cy="624" r="30" fill="#FF9EB0" opacity="0.7" filter="url(#soft)"/>
+
+  <!-- 麦克风（拟物：金属网罩 + 柄，鱼鳍抱握） -->
+  <rect x="472" y="700" width="80" height="150" rx="38" fill="url(#handle)"/>
+  <circle cx="512" cy="668" r="92" fill="url(#metal)"/>
+  <circle cx="512" cy="668" r="74" fill="none" stroke="#7E8390" stroke-width="6" opacity="0.7"/>
+  <circle cx="512" cy="668" r="88" fill="url(#glass)"/>
+  <!-- 网罩格纹 -->
+  <g stroke="#8B919D" stroke-width="4" opacity="0.55">
+    <line x1="452" y1="640" x2="572" y2="640"/>
+    <line x1="444" y1="668" x2="580" y2="668"/>
+    <line x1="452" y1="696" x2="572" y2="696"/>
+    <line x1="472" y1="620" x2="472" y2="716"/>
+    <line x1="512" y1="600" x2="512" y2="736"/>
+    <line x1="552" y1="620" x2="552" y2="716"/>
+  </g>
+  <!-- 网罩高光弧 -->
+  <path d="M 446 606 A 92 92 0 0 1 556 590" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" opacity="0.9" filter="url(#soft)"/>
+
+  <!-- 音波泡泡（从麦克风两侧冒出） -->
+  <path d="M 386 560 A 40 40 0 0 0 398 620" fill="none" stroke="#7EE8CB" stroke-width="14" stroke-linecap="round" opacity="0.85"/>
+  <path d="M 352 542 A 78 78 0 0 0 368 646" fill="none" stroke="#7EE8CB" stroke-width="12" stroke-linecap="round" opacity="0.55"/>
+  <path d="M 640 560 A 40 40 0 0 1 628 620" fill="none" stroke="#7EE8CB" stroke-width="14" stroke-linecap="round" opacity="0.85"/>
+  <path d="M 674 542 A 78 78 0 0 1 658 646" fill="none" stroke="#7EE8CB" stroke-width="12" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- 签名四角星 -->
+  <path d="M 796 268 Q 812 284 828 300 Q 812 316 796 332 Q 780 316 764 300 Q 780 284 796 268 Z" fill="#FFFFFF" opacity="0.95"/>
+  <path d="M 246 296 Q 256 306 266 316 Q 256 326 246 336 Q 236 326 226 316 Q 236 306 246 296 Z" fill="#7EE8CB" opacity="0.6"/>
+</svg>

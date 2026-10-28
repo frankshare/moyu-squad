@@ -1,0 +1,12 @@
+{
+  "name": "moyu-squad-worker",
+  "private": true,
+  "description": "摸鱼小队信令服务器（Cloudflare Workers + Durable Objects）",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

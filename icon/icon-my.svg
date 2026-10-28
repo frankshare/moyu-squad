@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a2338"/>
+      <stop offset="1" stop-color="#0a0d16"/>
+    </linearGradient>
+    <radialGradient id="lift" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.52" r="0.55">
+      <stop offset="0" stop-color="#2DD4A7" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#2DD4A7" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="soft2" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <!-- my 黏土字渐变（左上受光 → 右下背光） -->
+    <linearGradient id="clay" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#5ff0c4"/>
+      <stop offset="0.55" stop-color="#2dd4a7"/>
+      <stop offset="1" stop-color="#14906f"/>
+    </linearGradient>
+    <linearGradient id="clayHi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景层 -->
+  <rect width="1024" height="1024" fill="url(#bg)" filter="url(#noise)"/>
+  <rect width="1024" height="1024" fill="url(#lift)"/>
+  <circle cx="512" cy="540" r="430" fill="url(#glow)"/>
+  <!-- 斜光带 -->
+  <rect x="-200" y="200" width="1500" height="120" fill="#FFFFFF" opacity="0.045" transform="rotate(30 512 512)" filter="url(#soft)"/>
+
+  <!-- 底部投影 -->
+  <ellipse cx="500" cy="796" rx="330" ry="46" fill="#04070e" opacity="0.55" filter="url(#soft)"/>
+
+  <!-- ═══ 字母 my（粗圆角描边 = 黏土字） ═══ -->
+  <!-- 白色贴纸底（放大版描边） -->
+  <g fill="none" stroke="#0F172B" stroke-width="150" stroke-linecap="round" stroke-linejoin="round" opacity="1">
+    <path d="M 200 706 L 200 474 Q 200 356 322 356 Q 440 356 440 474 L 440 706"/>
+    <path d="M 440 474 Q 440 356 556 356 Q 668 356 668 474 L 668 640"/>
+    <path d="M 824 356 L 824 620 Q 824 760 726 802 Q 648 832 588 792 Q 556 768 570 732"/>
+  </g>
+  <!-- 主笔画 -->
+  <g fill="none" stroke="url(#clay)" stroke-width="104" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 200 706 L 200 474 Q 200 356 322 356 Q 440 356 440 474 L 440 706"/>
+    <path d="M 440 474 Q 440 356 556 356 Q 668 356 668 474 L 668 640"/>
+    <!-- y 的尾巴沉到基线下，钩成鱼钩 -->
+    <path d="M 824 356 L 824 620 Q 824 760 726 802 Q 648 832 588 792 Q 556 768 570 732"/>
+  </g>
+  <!-- 顶部高光（沿笔画上缘的细亮线） -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" opacity="0.55" filter="url(#soft2)">
+    <path d="M 226 682 L 226 476 Q 226 382 322 382 Q 414 382 414 476"/>
+    <path d="M 466 476 Q 466 382 556 382 Q 642 382 642 476 L 642 604"/>
+    <path d="M 798 400 L 798 596"/>
+  </g>
+  <!-- 鱼钩倒刺点睛 -->
+  <circle cx="592" cy="742" r="18" fill="url(#clay)"/>
+
+  <!-- 音波泡泡（左下，呼应语音） -->
+  <path d="M 168 760 A 46 46 0 0 1 150 812" fill="none" stroke="#7EE8CB" stroke-width="14" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 118 736 A 88 88 0 0 1 96 824" fill="none" stroke="#7EE8CB" stroke-width="12" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- 签名四角星 -->
+  <path d="M 856 214 Q 872 230 888 246 Q 872 262 856 278 Q 840 262 824 246 Q 840 230 856 214 Z" fill="#FFFFFF" opacity="0.95"/>
+  <path d="M 206 246 Q 216 256 226 266 Q 216 276 206 286 Q 196 276 186 266 Q 196 256 206 246 Z" fill="#7EE8CB" opacity="0.6"/>
+</svg>
