@@ -1278,7 +1278,27 @@ document.addEventListener('keyup', e => {
 $('#joinBtn').addEventListener('click', joinRoom)
 $('#roomCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom() })
 $('#name').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom() })
-$('#leaveBtn').addEventListener('click', leaveRoom)
+// 离开房间：二次确认，避免误点直接退房
+$('#leaveBtn').addEventListener('click', () => {
+  const btn = $('#leaveBtn')
+  if (btn.dataset.confirm !== '1') {
+    btn.dataset.confirm = '1'
+    btn.textContent = '确认离开？'
+    btn.classList.add('btn-danger-armed')
+    setTimeout(() => {
+      if (btn.dataset.confirm === '1') {
+        btn.dataset.confirm = '0'
+        btn.textContent = '离开房间'
+        btn.classList.remove('btn-danger-armed')
+      }
+    }, 3500)
+    return
+  }
+  btn.dataset.confirm = '0'
+  btn.textContent = '离开房间'
+  btn.classList.remove('btn-danger-armed')
+  leaveRoom()
+})
 
 $('#muteBtn').addEventListener('click', () => {
   if (state.mode === 'ptt') { state.muted = !state.muted; applyMuteState(); refreshMicUI(); send({ t: 'state', muted: state.muted }); return }
