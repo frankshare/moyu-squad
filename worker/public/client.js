@@ -658,14 +658,11 @@ function handleMsg(m) {
       break
     case 'img':
       if (m.from !== state.myId) {
-        // sid = 内置贴图 id（龙图 stickers/xxx、摸鱼 fish_xxx），data = 自定义图片 data URI
+        // sid = 内置贴图 id（龙图/摸鱼都在 manifest 里），data = 自定义图片 data URI
         let src = m.data || ''
         if (m.sid) {
-          if (m.sid.startsWith('f_')) src = fishUri(m.sid) || ''
-          else {
-            const f = LONG_STICKERS.find(s => s.id === m.sid)
-            src = f ? stickerUrl(f.file) : ''
-          }
+          const f = LONG_STICKERS.find(s => s.id === m.sid)
+          src = f ? stickerUrl(f.file) : ''
         }
         if (src) appendImg(m.name, src, false)
         sndMsg()
@@ -853,35 +850,13 @@ const EMOJIS = [
   '💪','🤝','✌️','🤙','🐟','🎉','🔥','💯','❓','❗',
   '💤','🎮','🏆','🍺','🀄','🎲'
 ]
-// 内置摸鱼贴图（SVG data URI）；想发龙图：把图片直接拖进聊天框即可
-// 内置摸鱼贴图（SVG）。
-// 注意：Chromium 不渲染 <img src="data:image/svg+xml">（naturalWidth=0），
-// 必须用 Blob URL 才能显示，否则发出来是空白。
-// 但 Blob URL 是本机内存地址、无法发给队友 → 所以发送时用固定 id（sid），
-// 双方各自用同一份定义生成本地 Blob URL 渲染。
-const FISH_STICKER_DEFS = [
-  { id: 'f_laugh', bg: '#2dd4a7', face: '<path d="M42 52 Q52 62 62 52" stroke="#123028" stroke-width="3" fill="none" stroke-linecap="round"/>', deco: '<text x="96" y="20" font-size="18">😂</text>' },
-  { id: 'f_ask', bg: '#8f7bff', face: '<ellipse cx="52" cy="52" rx="4" ry="5" fill="#123028"/>', deco: '<text x="88" y="24" font-size="22" font-weight="bold" fill="#fff">?</text>' },
-  { id: 'f_speechless', bg: '#9aa7b5', face: '<line x1="42" y1="54" x2="62" y2="54" stroke="#123028" stroke-width="3" stroke-linecap="round"/>', deco: '<text x="88" y="22" font-size="15">…</text>' },
-  { id: 'f_angry', bg: '#ff6b6b', face: '<line x1="42" y1="53" x2="62" y2="53" stroke="#123028" stroke-width="3" stroke-linecap="round"/>', deco: '<path d="M32 32 L44 37 M76 32 L64 37" stroke="#7a1420" stroke-width="3" stroke-linecap="round"/>' },
-  { id: 'f_go', bg: '#ffb84d', face: '<ellipse cx="52" cy="53" rx="5" ry="6" fill="#123028"/>', deco: '<text x="86" y="24" font-size="16">💨</text>' },
-  { id: 'f_sleep', bg: '#7d9184', face: '<path d="M42 54 Q52 48 62 54" stroke="#123028" stroke-width="3" fill="none" stroke-linecap="round"/>', deco: '<text x="88" y="22" font-size="14">💤</text>' }
-]
-function fishSvg(d) {
-  // 必须带 width/height：SVG 只有 viewBox 时在 <img> 里没有内在尺寸，会渲染成 0 宽（空白）
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90"><ellipse cx="56" cy="48" rx="42" ry="27" fill="${d.bg}"/><path d="M92 48 Q108 38 114 24 Q118 50 106 64 Q98 58 92 54 Z" fill="${d.bg}" opacity=".85"/><path d="M46 22 Q58 10 72 18 Q64 26 52 28 Z" fill="${d.bg}" opacity=".85"/><ellipse cx="40" cy="42" rx="7" ry="9" fill="#fff"/><ellipse cx="64" cy="42" rx="7" ry="9" fill="#fff"/><circle cx="41" cy="44" r="4" fill="#123028"/><circle cx="63" cy="44" r="4" fill="#123028"/><circle cx="39.5" cy="42" r="1.6" fill="#fff"/><circle cx="61.5" cy="42" r="1.6" fill="#fff"/><ellipse cx="24" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/><ellipse cx="86" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/>${d.face}${d.deco || ''}</svg>`
-}
-const FISH_URI_CACHE = {}
+// 内置摸鱼贴图：SVG 静态资源（stickers/fish/*.svg），随 manifest 一起加载。
+// 用静态文件而非 Blob/data URI：Chromium 不渲染 <img src="data:image/svg+xml">，
+// 而 Blob URL 是本机地址无法跨端传递；静态资源两端都能直接引用。
+let FISH_STICKERS = []
 function fishUri(id) {
-  if (!FISH_URI_CACHE[id]) {
-    const d = FISH_STICKER_DEFS.find(x => x.id === id)
-    if (!d) return null
-    FISH_URI_CACHE[id] = URL.createObjectURL(new Blob([fishSvg(d)], { type: 'image/svg+xml' }))
-  }
-  return FISH_URI_CACHE[id]
-}
-function fishSticker(bg, face, deco) {
-  return URL.createObjectURL(new Blob([fishSvg({ bg, face, deco })], { type: 'image/svg+xml' }))
+  const st = LONG_STICKERS.find(s => s.id === id)
+  return st ? stickerUrl(st.file) : ''
 }
 // 熊猫头龙图清单（script 注入，file:// 下 fetch 会被拦）
 let LONG_STICKERS = []
@@ -909,11 +884,15 @@ window.__moyuPeerStats = async () => {
 async function loadLongStickers() {
   if (window.MOYU_STICKERS && window.MOYU_STICKERS.length) {
     LONG_STICKERS = window.MOYU_STICKERS
+    FISH_STICKERS = LONG_STICKERS.filter(s => s.kind === 'fish')
     return
   }
   try {
     const r = await fetch('stickers/manifest.json', { signal: AbortSignal.timeout(5000) })
-    if (r.ok) LONG_STICKERS = await r.json()
+    if (r.ok) {
+      LONG_STICKERS = await r.json()
+      FISH_STICKERS = LONG_STICKERS.filter(s => s.kind === 'fish')
+    }
   } catch (e) { log('龙图清单加载失败', e) }
 }
 function appendImg(name, data, self, sid) {
@@ -980,7 +959,7 @@ function renderPickers() {
   // 摸鱼贴图（内置 SVG，用 Blob URL 渲染）
   const fg = $('#fishGrid')
   fg.innerHTML = ''
-  FISH_STICKER_DEFS.forEach(d => {
+  FISH_STICKERS.forEach(d => {
     const b = document.createElement('button')
     b.title = d.name || d.id
     b.innerHTML = `<img src="${fishUri(d.id)}" alt="${d.id}" />`

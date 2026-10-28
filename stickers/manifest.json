@@ -123,5 +123,41 @@
   "id": "zuitian",
   "name": "嘴甜",
   "file": "zuitian.jpeg"
+ },
+ {
+  "id": "f_laugh",
+  "name": "f_laugh",
+  "file": "fish/f_laugh.svg",
+  "kind": "fish"
+ },
+ {
+  "id": "f_ask",
+  "name": "f_ask",
+  "file": "fish/f_ask.svg",
+  "kind": "fish"
+ },
+ {
+  "id": "f_speechless",
+  "name": "f_speechless",
+  "file": "fish/f_speechless.svg",
+  "kind": "fish"
+ },
+ {
+  "id": "f_angry",
+  "name": "f_angry",
+  "file": "fish/f_angry.svg",
+  "kind": "fish"
+ },
+ {
+  "id": "f_go",
+  "name": "f_go",
+  "file": "fish/f_go.svg",
+  "kind": "fish"
+ },
+ {
+  "id": "f_sleep",
+  "name": "f_sleep",
+  "file": "fish/f_sleep.svg",
+  "kind": "fish"
  }
 ]
