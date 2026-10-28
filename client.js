@@ -1079,6 +1079,7 @@ function openSettings() {
   refreshDevices()
   renderThemeGrid()
   renderBubbleGrid()
+  setupUpdateUI()
   $('#masterVol').value = Math.round(state.masterVol * 100)
   $('#masterVolVal').textContent = Math.round(state.masterVol * 100) + '%'
   $('#nsToggle').checked = state.ns
@@ -1155,19 +1156,38 @@ async function doCheckUpdate() {
         put('查询失败：' + (r.msg || '未知错误'), 'err')
         hint.textContent = '查询失败'
       } else if (!r.hasUpdate) {
-        put('✅ 已是最新版本（' + r.latest + '）', 'ok')
+        put('✅ 已是最新版本（v' + r.latest + '）', 'ok')
         hint.textContent = '当前已是最新版本'
       } else {
         put('发现新版本：v' + r.latest + '（当前 v' + r.current + '）', 'ok')
         if (r.notes) { put(''); put('更新内容：'); put(r.notes) }
-        if (r.size) put('', 'ok')
         const sizeMB = r.size ? (r.size / 1048576).toFixed(1) + ' MB' : ''
-        put('点击下方按钮用浏览器下载新版安装包' + (sizeMB ? '（' + sizeMB + '）' : ''))
+        put('点击下方按钮直接下载并安装' + (sizeMB ? '（' + sizeMB + '）' : ''))
         const dl = document.createElement('button')
         dl.className = 'btn btn-primary btn-sm'
         dl.style.marginTop = '8px'
-        dl.textContent = '⬇ 下载 v' + r.latest
-        dl.addEventListener('click', () => window.moyuUpdate.openDownload(r.url))
+        dl.textContent = '⬇ 下载并安装 v' + r.latest
+        dl.addEventListener('click', async () => {
+          dl.disabled = true
+          dl.textContent = '下载中…'
+          try {
+            const res = await window.moyuUpdate.download(r.url)
+            if (res.ok) {
+              dl.textContent = '✅ 已下载，正在启动安装程序'
+              put('')
+              put('安装包已保存：' + res.path, 'ok')
+              put('安装程序已启动，安装完成后重新打开即可。', 'ok')
+            } else {
+              dl.textContent = '下载失败，重试'
+              dl.disabled = false
+              put(res.msg || '下载失败', 'err')
+            }
+          } catch (e) {
+            dl.textContent = '下载失败，重试'
+            dl.disabled = false
+            put('下载出错：' + e.message, 'err')
+          }
+        })
         log.appendChild(dl)
         hint.textContent = '有新版 v' + r.latest + ' 可下载'
       }
@@ -1177,6 +1197,25 @@ async function doCheckUpdate() {
   }
   btn.disabled = false
   btn.textContent = '检查更新'
+}
+
+/* ---------- 按运行环境调整更新按钮 ---------- */
+async function setupUpdateUI() {
+  // 安装版没有 .git，git pull 注定失败 → 只留「检查更新」
+  let isRepo = false
+  try {
+    if (window.moyuUpdate && window.moyuUpdate.env) {
+      const e = await window.moyuUpdate.env()
+      isRepo = !!e.isRepo
+    }
+  } catch {}
+  const gitBtn = $('#updateBtn')
+  if (!isRepo) {
+    gitBtn.classList.add('hidden')
+    $('#updateHint').textContent = '点击「检查更新」下载新版安装包'
+  } else {
+    $('#updateHint').textContent = '源码模式：可原地拉取更新'
+  }
 }
 async function doUpdate() {
   const btn = $('#updateBtn')

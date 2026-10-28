@@ -75,14 +75,13 @@ function run(cmd, args, cwd) {
   })
 }
 ipcMain.handle('app-update', async () => {
-  const repoDir = path.join(app.getAppPath(), '..')
+  const repoDir = detectRepoDir()
   const lines = []
-  const isRepo = require('fs').existsSync(path.join(repoDir, '.git'))
-  if (!isRepo) {
+  if (!repoDir) {
     return {
       ok: false, changed: false, needsInstaller: true,
       log: '当前是安装版，没有源码目录，无法直接拉取代码。\n\n' +
-           '请到 GitHub Releases / 仓库下载最新安装包覆盖安装：\n' + REPO_URL +
+           '请点「检查更新」下载新版安装包覆盖安装：\n' + RELEASES_PAGE +
            '\n（覆盖安装不会影响你的设置和聊天记录）'
     }
   }
@@ -110,9 +109,69 @@ ipcMain.on('app-open-url', (e, url) => {
   }
 })
 
+// ── 应用内下载安装包（不跳浏览器） ──
+ipcMain.handle('app-download', async (e, url) => {
+  const fs = require('fs')
+  const { shell } = require('electron')
+  if (typeof url !== 'string' || !/^https:\/\//.test(url)) return { ok: false, msg: '非法地址' }
+  try {
+    const dl = await electron_download(url)
+    if (!dl.ok) return dl
+    // 下载完成 → 直接启动安装程序
+    try {
+      shell.openPath(dl.path)
+    } catch {}
+    return dl
+  } catch (err) {
+    return { ok: false, msg: '下载失败：' + (err.message || err) }
+  }
+})
+
+async function electron_download(url) {
+  const fs = require('fs')
+  const path = require('path')
+  const { app } = require('electron')
+  const r = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(20 * 60 * 1000) })
+  if (!r.ok) return { ok: false, msg: '下载失败 HTTP ' + r.status }
+  const total = Number(r.headers.get('content-length') || 0)
+  const name = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'moyu-squad-setup.exe'
+  const dir = path.join(app.getPath('temp'), 'moyu-update')
+  fs.mkdirSync(dir, { recursive: true })
+  const file = path.join(dir, name)
+  const ws = fs.createWriteStream(file)
+  let got = 0
+  const reader = r.body.getReader()
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    got += value.length
+    if (!ws.write(Buffer.from(value))) await new Promise(res => ws.once('drain', res))
+  }
+  await new Promise(res => ws.end(res))
+  return { ok: true, path: file, size: got, total }
+}
+
 // ── 检查更新（GitHub Releases，无需 git / 无需代理） ──
 const RELEASES_API = 'https://api.github.com/repos/frankshare/moyu-squad/releases/latest'
 const RELEASES_PAGE = 'https://github.com/frankshare/moyu-squad/releases/latest'
+
+// 运行环境探测：安装版（无 .git）vs 源码版（有 .git）
+function detectRepoDir() {
+  const fs = require('fs')
+  const candidates = [
+    app.getAppPath(),                                   // 源码运行：项目根
+    path.join(app.getAppPath(), '..'),                   // asar 内 → 项目根
+    path.join(path.dirname(process.execPath), '..', '..') // 安装目录：Programs/moyu-squad
+  ]
+  for (const d of candidates) {
+    try {
+      if (fs.existsSync(path.join(d, '.git')) && fs.existsSync(path.join(d, 'package.json'))) return d
+    } catch {}
+  }
+  return null
+}
+ipcMain.handle('app-env', () => ({ isRepo: !!detectRepoDir() }))
+
 ipcMain.handle('app-check-update', async () => {
   try {
     const r = await fetch(RELEASES_API, {
