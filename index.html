@@ -32,7 +32,7 @@
           <h1>摸鱼小队</h1>
           <p class="brand-sub">无广告 · 无账号 · 房码即开黑</p>
         </div>
-        <button id="themeBtnJoin" class="btn btn-ghost btn-sm join-theme">🎨 主题</button>
+        <button id="themeBtnJoin" class="btn btn-ghost btn-icon join-theme" title="设置">⚙️</button>
       </div>
 
       <label class="fld-label" for="name">你的昵称</label>
@@ -70,7 +70,7 @@
         <div id="netBadge" class="net-badge" title="语音链路延迟">
           <span id="netDot" class="dot"></span><span id="netText">连接中…</span>
         </div>
-        <button id="themeBtnRoom" class="btn btn-ghost btn-sm">🎨 主题</button>
+        <button id="settingsBtn" class="btn btn-ghost btn-icon" title="设置">⚙️</button>
       </div>
     </header>
 
@@ -160,19 +160,82 @@
     </footer>
   </div>
 
-  <!-- ══════════ 主题面板 ══════════ -->
-  <div id="themeModal" class="modal-mask hidden">
+  <!-- ══════════ 设置面板 ══════════ -->
+  <div id="settingsModal" class="modal-mask hidden">
     <div class="modal modal-wide">
       <div class="modal-head">
-        <span>🎨 配色主题</span>
-        <button id="themeClose" class="btn btn-ghost btn-icon">✕</button>
+        <span>⚙️ 设置</span>
+        <button id="settingsClose" class="btn btn-ghost btn-icon">✕</button>
       </div>
       <div class="modal-body">
+
+        <div class="sec-title">更新</div>
+        <div class="update-row">
+          <div class="update-info">
+            <div class="update-ver">版本 <span id="appVer">0.1.0</span></div>
+            <div id="updateHint" class="fld-hint">检查是否有新版本</div>
+          </div>
+          <button id="updateBtn" class="btn btn-secondary btn-sm">拉取更新</button>
+        </div>
+        <div id="updateLog" class="update-log hidden"></div>
+
+        <div class="sec-title">气泡样式</div>
+        <div id="bubbleGrid" class="bubble-grid"></div>
+
+        <div class="sec-title">主题</div>
         <div id="themeGrid" class="theme-grid"></div>
-        <p class="fld-hint">点击即用，保存在本机。8 套配色覆盖深浅场景。</p>
+
+        <div class="sec-title">音频</div>
+        <div class="grid-2">
+          <div>
+            <label class="fld-label">麦克风</label>
+            <select id="micSel" class="fld fld-sm"></select>
+          </div>
+          <div>
+            <label class="fld-label">扬声器</label>
+            <select id="spkSel" class="fld fld-sm"></select>
+          </div>
+        </div>
+        <label class="fld-label">扬声器音量 <span id="masterVolVal" class="fld-hint">100%</span></label>
+        <input id="masterVol" type="range" min="0" max="100" value="100" class="slider-block" />
+
+        <div class="sec-title">麦克风测试</div>
+        <div class="test-box">
+          <button id="micTestBtn" class="btn btn-secondary btn-sm">开始测试</button>
+          <div id="micTestMeter" class="meter-line hidden"><i></i></div>
+          <label class="switch-row">
+            <span>听到自己的声音 <span class="fld-hint">建议戴耳机</span></span>
+            <input type="checkbox" id="monitorToggle" class="switch" />
+          </label>
+        </div>
+
+        <div class="sec-title">环境降噪（噪声门）</div>
+        <label class="switch-row">
+          <span>拦截环境音 <span class="fld-hint">只拦人声电平以下的声音，不伤人声</span></span>
+          <input type="checkbox" id="gateToggle" class="switch" checked />
+        </label>
+        <label class="switch-row">
+          <span>防呼吸低切 <span class="fld-hint">滤掉呼吸声/低频轰鸣</span></span>
+          <input type="checkbox" id="hpToggle" class="switch" checked />
+        </label>
+        <label class="fld-label">拦截强度</label>
+        <select id="gateStrengthSel" class="fld fld-sm">
+          <option value="low">轻 — 稍拦环境音</option>
+          <option value="mid" selected>中 — 推荐</option>
+          <option value="high">强 — 环境很吵时用</option>
+        </select>
+
+        <div class="sec-title">音频增强</div>
+        <label class="switch-row"><span>降噪</span><input type="checkbox" id="nsToggle" class="switch" checked /></label>
+        <label class="switch-row"><span>回声消除</span><input type="checkbox" id="aecToggle" class="switch" checked /></label>
+        <label class="switch-row"><span>自动增益</span><input type="checkbox" id="agcToggle" class="switch" checked /></label>
+
+        <div class="sec-title">关于</div>
+        <p class="fld-hint">摸鱼小队 · 无广告开黑语音<br/>
+        源码：<a href="https://github.com/frankshare/moyu-squad" id="repoLink">github.com/frankshare/moyu-squad</a></p>
       </div>
       <div class="modal-foot">
-        <button id="themeDone" class="btn btn-primary">完成</button>
+        <button id="settingsDone" class="btn btn-primary">完成</button>
       </div>
     </div>
   </div>

@@ -780,15 +780,38 @@ setInterval(async () => {
 }, 3000)
 
 /* ---------- 文字消息 ---------- */
+/* ---------- 说话人配色：同一个人始终同色 ---------- */
+const NAME_COLORS = ['#4f8cff', '#2dd4a7', '#ff8f4f', '#c084fc', '#ff6b8a', '#fbbf24', '#38bdf8', '#a3e635']
+function colorOf(name) {
+  if (!name) return NAME_COLORS[0]
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return NAME_COLORS[h % NAME_COLORS.length]
+}
+
+/* ---------- 气泡样式（借鉴 QQ 的思路，保持克制） ---------- */
+const BUBBLES = [
+  { id: 'soft', name: '柔和圆角' },
+  { id: 'point', name: 'QQ 尖角' },
+  { id: 'outline', name: '描边' },
+  { id: 'card', name: '卡片' }
+]
+function bubbleStyle() { return localStorage.getItem('moyu.bubble') || 'soft' }
+function applyBubbleStyle(id) {
+  localStorage.setItem('moyu.bubble', id)
+  document.body.dataset.bubble = id
+}
 function appendChat(name, text, self) {
   const log = $('#chatLog')
   log.querySelector('.chat-empty')?.remove()
   const div = document.createElement('div')
-  div.className = 'chat-msg' + (self ? ' self' : '')
+  div.className = 'chat-msg ' + (self ? 'self' : 'other')
+  if (!self) div.style.setProperty('--cm-color', colorOf(name))
   const t = new Date()
   const hh = String(t.getHours()).padStart(2, '0'), mm = String(t.getMinutes()).padStart(2, '0')
-  div.innerHTML = `<div class="cm-head"></div><div class="cm-text"></div>`
-  div.querySelector('.cm-head').textContent = `${self ? '我' : name} · ${hh}:${mm}`
+  div.innerHTML = `<div class="cm-head"><span class="cm-name"></span><span class="cm-time"></span></div><div class="cm-bubble"><span class="cm-text"></span></div>`
+  div.querySelector('.cm-name').textContent = self ? '我' : name
+  div.querySelector('.cm-time').textContent = hh + ':' + mm
   div.querySelector('.cm-text').textContent = text
   log.appendChild(div)
   log.scrollTop = log.scrollHeight
@@ -873,11 +896,13 @@ function appendImg(name, data, self, sid) {
   const log = $('#chatLog')
   log.querySelector('.chat-empty')?.remove()
   const div = document.createElement('div')
-  div.className = 'chat-msg' + (self ? ' self' : '')
+  div.className = 'chat-msg ' + (self ? 'self' : 'other')
+  if (!self) div.style.setProperty('--cm-color', colorOf(name))
   const t = new Date()
   const hh = String(t.getHours()).padStart(2, '0'), mm = String(t.getMinutes()).padStart(2, '0')
-  div.innerHTML = `<div class="cm-head"></div><img class="cm-img" alt="贴图" />`
-  div.querySelector('.cm-head').textContent = `${self ? '我' : name} · ${hh}:${mm}`
+  div.innerHTML = `<div class="cm-head"><span class="cm-name"></span><span class="cm-time"></span></div><div class="cm-bubble"><img class="cm-img" alt="贴图" /></div>`
+  div.querySelector('.cm-name').textContent = self ? '我' : name
+  div.querySelector('.cm-time').textContent = hh + ':' + mm
   div.querySelector('img').src = data
   log.appendChild(div)
   log.scrollTop = log.scrollHeight
@@ -1024,7 +1049,25 @@ function renderRecent() {
   })
 }
 
-/* ---------- 设置弹层 / 主题面板 ---------- */
+/* ---------- 设置面板 ---------- */
+function openSettings() {
+  refreshDevices()
+  renderThemeGrid()
+  renderBubbleGrid()
+  $('#masterVol').value = Math.round(state.masterVol * 100)
+  $('#masterVolVal').textContent = Math.round(state.masterVol * 100) + '%'
+  $('#nsToggle').checked = state.ns
+  $('#aecToggle').checked = state.aec
+  $('#agcToggle').checked = state.agc
+  $('#gateToggle').checked = state.gateOn
+  $('#hpToggle').checked = state.hpOn
+  $('#gateStrengthSel').value = state.gateStrength
+  $('#settingsModal').classList.remove('hidden')
+}
+function closeSettings() {
+  stopMicTest()
+  $('#settingsModal').classList.add('hidden')
+}
 function renderThemeGrid() {
   const grid = $('#themeGrid')
   grid.innerHTML = ''
@@ -1033,7 +1076,6 @@ function renderThemeGrid() {
     const card = document.createElement('button')
     card.className = 'theme-card' + (t.id === cur ? ' active' : '')
     card.dataset.id = t.id
-    // 预览小窗：用主题自己的配色画一个迷你界面
     const bar = t.vars['--accent'] || '#4f8cff'
     const bg = t.vars['--bg'] || '#0d1117'
     const panel = t.vars['--panel'] || '#151a22'
@@ -1048,17 +1090,61 @@ function renderThemeGrid() {
     grid.appendChild(card)
   })
 }
-function openTheme() {
-  renderThemeGrid()
-  $('#themeModal').classList.remove('hidden')
+function renderBubbleGrid() {
+  const grid = $('#bubbleGrid')
+  grid.innerHTML = ''
+  const cur = bubbleStyle()
+  BUBBLES.forEach(b => {
+    const card = document.createElement('button')
+    card.className = 'bubble-card' + (b.id === cur ? ' active' : '')
+    card.innerHTML = `<span class="bubble-demo"><i class="bd-${b.id}"></i></span><span>${b.name}</span>`
+    card.addEventListener('click', () => { applyBubbleStyle(b.id); renderBubbleGrid() })
+    grid.appendChild(card)
+  })
 }
-function closeTheme() {
-  $('#themeModal').classList.add('hidden')
-}
-function toggleAudioPop(open) {
-  const pop = $('#audioPop')
-  if (open === undefined) return // details/summary 自带开合
-  pop.open = !!open
+
+/* ---------- 拉取更新（主进程执行 git pull） ---------- */
+async function doUpdate() {
+  const btn = $('#updateBtn')
+  const log = $('#updateLog')
+  const hint = $('#updateHint')
+  btn.disabled = true
+  btn.textContent = '更新中…'
+  log.classList.remove('hidden')
+  log.innerHTML = ''
+  const put = (txt, cls) => {
+    const d = document.createElement('div')
+    if (cls) d.className = cls
+    d.textContent = txt
+    log.appendChild(d)
+    log.scrollTop = log.scrollHeight
+  }
+  try {
+    if (!window.moyuUpdate) {
+      put('当前是网页版，无法直接拉取代码', 'err')
+      put('请到 GitHub 仓库下载最新版：github.com/frankshare/moyu-squad', '')
+    } else {
+      put('正在从 GitHub 拉取最新代码…')
+      const r = await window.moyuUpdate.update()
+      ;(r.log || '').split('\n').forEach(l => put(l, /error|fatal|失败/i.test(l) ? 'err' : /already up|已是最新|up to date/i.test(l) ? 'ok' : ''))
+      if (r.ok && r.changed) {
+        put('')
+        put('✅ 更新完成，正在重启应用…', 'ok')
+        hint.textContent = '已更新到最新版本'
+        setTimeout(() => window.moyuUpdate.restart(), 1200)
+      } else if (r.ok) {
+        put('✅ 已是最新版本', 'ok')
+        hint.textContent = '当前已是最新版本'
+      } else {
+        put('更新失败，请检查网络或仓库地址', 'err')
+        hint.textContent = '更新失败'
+      }
+    }
+  } catch (e) {
+    put('出错：' + e.message, 'err')
+  }
+  btn.disabled = false
+  btn.textContent = '拉取更新'
 }
 
 /* ---------- 进入 / 离开 ---------- */
@@ -1172,12 +1258,19 @@ $('#hpToggle').addEventListener('change', e => {
   localStorage.setItem('moyu.hp', state.hpOn ? '1' : '0')
   if (state.inRoom && state.localStream) setupSendChain()
 })
+$('#masterVol').addEventListener('input', e => {
+  state.masterVol = e.target.value / 100
+  localStorage.setItem('moyu.mvol', e.target.value)
+  $('#masterVolVal').textContent = e.target.value + '%'
+  applyVolumes()
+})
 
-$('#themeBtnJoin').addEventListener('click', openTheme)
-$('#themeBtnRoom').addEventListener('click', openTheme)
-$('#themeClose').addEventListener('click', closeTheme)
-$('#themeDone').addEventListener('click', closeTheme)
-$('#themeModal').addEventListener('click', e => { if (e.target === $('#themeModal')) closeTheme() })
+$('#settingsBtn').addEventListener('click', openSettings)
+$('#themeBtnJoin').addEventListener('click', openSettings)
+$('#settingsClose').addEventListener('click', closeSettings)
+$('#settingsDone').addEventListener('click', closeSettings)
+$('#settingsModal').addEventListener('click', e => { if (e.target === $('#settingsModal')) closeSettings() })
+$('#updateBtn').addEventListener('click', doUpdate)
 
 $('#micTestBtn').addEventListener('click', toggleMicTest)
 $('#monitorToggle').addEventListener('change', e => {
@@ -1203,16 +1296,10 @@ $('#agcToggle').addEventListener('change', e => { state.agc = e.target.checked; 
 $('#micSel').addEventListener('change', e => switchMic(e.target.value))
 $('#spkSel').addEventListener('change', e => switchSpeaker(e.target.value))
 
-$('#masterVol').addEventListener('input', e => {
-  state.masterVol = e.target.value / 100
-  localStorage.setItem('moyu.mvol', e.target.value)
-  $('#masterVolVal').textContent = e.target.value + '%'
-  applyVolumes()
-})
-
 $('#server').value = defaultServer()
 $('#name').value = localStorage.getItem('moyu.name') || ''
 applyTheme(localStorage.getItem('moyu.theme') || 'deepblue')
+applyBubbleStyle(bubbleStyle())
 setMode(state.mode)
 renderRecent()
 loadLongStickers().then(renderPickers)

@@ -1,5 +1,6 @@
 const { app, BrowserWindow, session, Tray, Menu, nativeImage, ipcMain } = require('electron')
 const path = require('path')
+const { execFile } = require('child_process')
 
 let tray = null
 let quitting = false
@@ -63,6 +64,42 @@ ipcMain.on('win-maximize', e => {
   win.isMaximized() ? win.unmaximize() : win.maximize()
 })
 ipcMain.on('win-close', e => BrowserWindow.fromWebContents(e.sender)?.close())
+
+// ── 应用内更新：git pull + 重启 ──
+const REPO_URL = 'https://github.com/frankshare/moyu-squad.git'
+function run(cmd, args, cwd) {
+  return new Promise(resolve => {
+    execFile(cmd, args, { cwd, timeout: 120000, windowsHide: true }, (err, stdout, stderr) => {
+      resolve({ err: err ? (err.message || String(err)) : null, stdout: stdout || '', stderr: stderr || '' })
+    })
+  })
+}
+ipcMain.handle('app-update', async () => {
+  const repoDir = path.join(app.getAppPath(), '..')
+  const lines = []
+  const isRepo = require('fs').existsSync(path.join(repoDir, '.git'))
+  if (!isRepo) {
+    return {
+      ok: false, changed: false,
+      log: '当前是安装版，没有源码目录，无法直接拉取。\n请到 GitHub 下载新版安装包：\n' + REPO_URL
+    }
+  }
+  lines.push('仓库目录: ' + repoDir)
+  // --autostash：本地有改动时 Git 自动暂存并恢复，避免 pull --rebase 直接失败
+  const pull = await run('git', ['pull', '--rebase', '--autostash', 'origin', 'master'], repoDir)
+  lines.push((pull.stdout || '').trim())
+  if (pull.stderr.trim()) lines.push(pull.stderr.trim())
+  if (pull.err) return { ok: false, changed: false, log: lines.join('\n') }
+  const changed = !/Already up to date|已经是最新|up[- ]to[- ]date/i.test(pull.stdout)
+  const head = await run('git', ['log', '-1', '--pretty=format:%h %s'], repoDir)
+  lines.push('当前版本: ' + (head.stdout || '').trim())
+  return { ok: true, changed, log: lines.join('\n') }
+})
+ipcMain.on('app-restart', () => {
+  quitting = true
+  app.relaunch()
+  app.exit(0)
+})
 
 function showMain() {
   const win = BrowserWindow.getAllWindows()[0]

@@ -12,3 +12,9 @@ contextBridge.exposeInMainWorld('moyuWin', {
   maximizeToggle: () => ipcRenderer.send('win-maximize'),
   close: () => ipcRenderer.send('win-close')
 })
+
+// 应用内更新：git pull + 重启
+contextBridge.exposeInMainWorld('moyuUpdate', {
+  update: () => ipcRenderer.invoke('app-update'),
+  restart: () => ipcRenderer.send('app-restart')
+})
