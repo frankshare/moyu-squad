@@ -80,8 +80,10 @@ ipcMain.handle('app-update', async () => {
   const isRepo = require('fs').existsSync(path.join(repoDir, '.git'))
   if (!isRepo) {
     return {
-      ok: false, changed: false,
-      log: '当前是安装版，没有源码目录，无法直接拉取。\n请到 GitHub 下载新版安装包：\n' + REPO_URL
+      ok: false, changed: false, needsInstaller: true,
+      log: '当前是安装版，没有源码目录，无法直接拉取代码。\n\n' +
+           '请到 GitHub Releases / 仓库下载最新安装包覆盖安装：\n' + REPO_URL +
+           '\n（覆盖安装不会影响你的设置和聊天记录）'
     }
   }
   lines.push('仓库目录: ' + repoDir)

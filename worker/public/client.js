@@ -658,8 +658,15 @@ function handleMsg(m) {
       break
     case 'img':
       if (m.from !== state.myId) {
-        // sid = 内置龙图（按 ID 传输，GIF 动图保留动画）；data = 自定义图片 data URI
-        const src = m.sid ? stickerUrl(LONG_STICKERS.find(s => s.id === m.sid)?.file || '') : m.data
+        // sid = 内置贴图 id（龙图 stickers/xxx、摸鱼 fish_xxx），data = 自定义图片 data URI
+        let src = m.data || ''
+        if (m.sid) {
+          if (m.sid.startsWith('f_')) src = fishUri(m.sid) || ''
+          else {
+            const f = LONG_STICKERS.find(s => s.id === m.sid)
+            src = f ? stickerUrl(f.file) : ''
+          }
+        }
         if (src) appendImg(m.name, src, false)
         sndMsg()
         if (!state.chatOpen) {
@@ -847,18 +854,34 @@ const EMOJIS = [
   '💤','🎮','🏆','🍺','🀄','🎲'
 ]
 // 内置摸鱼贴图（SVG data URI）；想发龙图：把图片直接拖进聊天框即可
-function fishSticker(bg, face, deco) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><ellipse cx="56" cy="48" rx="42" ry="27" fill="${bg}"/><path d="M92 48 Q108 38 114 24 Q118 50 106 64 Q98 58 92 54 Z" fill="${bg}" opacity=".85"/><path d="M46 22 Q58 10 72 18 Q64 26 52 28 Z" fill="${bg}" opacity=".85"/><ellipse cx="40" cy="42" rx="7" ry="9" fill="#fff"/><ellipse cx="64" cy="42" rx="7" ry="9" fill="#fff"/><circle cx="41" cy="44" r="4" fill="#123028"/><circle cx="63" cy="44" r="4" fill="#123028"/><circle cx="39.5" cy="42" r="1.6" fill="#fff"/><circle cx="61.5" cy="42" r="1.6" fill="#fff"/><ellipse cx="24" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/><ellipse cx="86" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/>${face}${deco || ''}</svg>`
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
-}
-const STICKERS = [
-  { name: '大笑', uri: fishSticker('#2dd4a7', '<path d="M42 52 Q52 62 62 52" stroke="#123028" stroke-width="3" fill="none" stroke-linecap="round"/>', '<text x="96" y="20" font-size="18">😂</text>') },
-  { name: '问号', uri: fishSticker('#8f7bff', '<ellipse cx="52" cy="52" rx="4" ry="5" fill="#123028"/>', '<text x="88" y="24" font-size="22" font-weight="bold" fill="#fff">?</text>') },
-  { name: '无语', uri: fishSticker('#9aa7b5', '<line x1="42" y1="54" x2="62" y2="54" stroke="#123028" stroke-width="3" stroke-linecap="round"/>', '<text x="88" y="22" font-size="15">…</text>') },
-  { name: '愤怒', uri: fishSticker('#ff6b6b', '<line x1="42" y1="53" x2="62" y2="53" stroke="#123028" stroke-width="3" stroke-linecap="round"/>', '<path d="M32 32 L44 37 M76 32 L64 37" stroke="#7a1420" stroke-width="3" stroke-linecap="round"/>') },
-  { name: '冲鸭', uri: fishSticker('#ffb84d', '<ellipse cx="52" cy="53" rx="5" ry="6" fill="#123028"/>', '<text x="86" y="24" font-size="16">💨</text>') },
-  { name: '摸了', uri: fishSticker('#7d9184', '<path d="M42 54 Q52 48 62 54" stroke="#123028" stroke-width="3" fill="none" stroke-linecap="round"/>', '<text x="88" y="22" font-size="14">💤</text>') }
+// 内置摸鱼贴图（SVG）。
+// 注意：Chromium 不渲染 <img src="data:image/svg+xml">（naturalWidth=0），
+// 必须用 Blob URL 才能显示，否则发出来是空白。
+// 但 Blob URL 是本机内存地址、无法发给队友 → 所以发送时用固定 id（sid），
+// 双方各自用同一份定义生成本地 Blob URL 渲染。
+const FISH_STICKER_DEFS = [
+  { id: 'f_laugh', bg: '#2dd4a7', face: '<path d="M42 52 Q52 62 62 52" stroke="#123028" stroke-width="3" fill="none" stroke-linecap="round"/>', deco: '<text x="96" y="20" font-size="18">😂</text>' },
+  { id: 'f_ask', bg: '#8f7bff', face: '<ellipse cx="52" cy="52" rx="4" ry="5" fill="#123028"/>', deco: '<text x="88" y="24" font-size="22" font-weight="bold" fill="#fff">?</text>' },
+  { id: 'f_speechless', bg: '#9aa7b5', face: '<line x1="42" y1="54" x2="62" y2="54" stroke="#123028" stroke-width="3" stroke-linecap="round"/>', deco: '<text x="88" y="22" font-size="15">…</text>' },
+  { id: 'f_angry', bg: '#ff6b6b', face: '<line x1="42" y1="53" x2="62" y2="53" stroke="#123028" stroke-width="3" stroke-linecap="round"/>', deco: '<path d="M32 32 L44 37 M76 32 L64 37" stroke="#7a1420" stroke-width="3" stroke-linecap="round"/>' },
+  { id: 'f_go', bg: '#ffb84d', face: '<ellipse cx="52" cy="53" rx="5" ry="6" fill="#123028"/>', deco: '<text x="86" y="24" font-size="16">💨</text>' },
+  { id: 'f_sleep', bg: '#7d9184', face: '<path d="M42 54 Q52 48 62 54" stroke="#123028" stroke-width="3" fill="none" stroke-linecap="round"/>', deco: '<text x="88" y="22" font-size="14">💤</text>' }
 ]
+function fishSvg(d) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><ellipse cx="56" cy="48" rx="42" ry="27" fill="${d.bg}"/><path d="M92 48 Q108 38 114 24 Q118 50 106 64 Q98 58 92 54 Z" fill="${d.bg}" opacity=".85"/><path d="M46 22 Q58 10 72 18 Q64 26 52 28 Z" fill="${d.bg}" opacity=".85"/><ellipse cx="40" cy="42" rx="7" ry="9" fill="#fff"/><ellipse cx="64" cy="42" rx="7" ry="9" fill="#fff"/><circle cx="41" cy="44" r="4" fill="#123028"/><circle cx="63" cy="44" r="4" fill="#123028"/><circle cx="39.5" cy="42" r="1.6" fill="#fff"/><circle cx="61.5" cy="42" r="1.6" fill="#fff"/><ellipse cx="24" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/><ellipse cx="86" cy="58" rx="6" ry="4" fill="#FF9EB0" opacity=".7"/>${d.face}${d.deco || ''}</svg>`
+}
+const FISH_URI_CACHE = {}
+function fishUri(id) {
+  if (!FISH_URI_CACHE[id]) {
+    const d = FISH_STICKER_DEFS.find(x => x.id === id)
+    if (!d) return null
+    FISH_URI_CACHE[id] = URL.createObjectURL(new Blob([fishSvg(d)], { type: 'image/svg+xml' }))
+  }
+  return FISH_URI_CACHE[id]
+}
+function fishSticker(bg, face, deco) {
+  return URL.createObjectURL(new Blob([fishSvg({ bg, face, deco })], { type: 'image/svg+xml' }))
+}
 // 熊猫头龙图清单（script 注入，file:// 下 fetch 会被拦）
 let LONG_STICKERS = []
 // 调试用：暴露状态，便于排查链路质量
@@ -907,12 +930,13 @@ function appendImg(name, data, self, sid) {
   log.appendChild(div)
   log.scrollTop = log.scrollHeight
 }
-function sendSticker(uri) {
+function sendSticker(def) {
   if (!state.inRoom) return
+  const uri = fishUri(def.id)
+  if (!uri) return
   appendImg(state.name, uri, true)
-  send({ t: 'img', data: uri })
-}
-// 贴图资源路径：网页版同源，桌面端 file:// 用相对路径
+  send({ t: 'img', sid: def.id })
+}// 贴图资源路径：网页版同源，桌面端 file:// 用相对路径
 function stickerUrl(file) {
   return 'stickers/' + file
 }
@@ -952,14 +976,14 @@ function renderPickers() {
     })
     eg.appendChild(b)
   })
-  // 摸鱼贴图（内置 SVG）
+  // 摸鱼贴图（内置 SVG，用 Blob URL 渲染）
   const fg = $('#fishGrid')
   fg.innerHTML = ''
-  STICKERS.forEach(s => {
+  FISH_STICKER_DEFS.forEach(d => {
     const b = document.createElement('button')
-    b.title = s.name
-    b.innerHTML = `<img src="${s.uri}" alt="${s.name}" />`
-    b.addEventListener('click', () => { sendSticker(s.uri); $('#pickerPanel').classList.add('hidden') })
+    b.title = d.name || d.id
+    b.innerHTML = `<img src="${fishUri(d.id)}" alt="${d.id}" />`
+    b.addEventListener('click', () => { sendSticker(d); $('#pickerPanel').classList.add('hidden') })
     fg.appendChild(b)
   })
   // 熊猫头龙图（按 ID 发送）
@@ -1135,6 +1159,11 @@ async function doUpdate() {
       } else if (r.ok) {
         put('✅ 已是最新版本', 'ok')
         hint.textContent = '当前已是最新版本'
+      } else if (r.needsInstaller) {
+        // 安装版没有源码目录，不是错误，是正常情况
+        put('')
+        put('ℹ️ 请下载新版安装包覆盖安装（不会丢设置）', 'ok')
+        hint.textContent = '安装版请到 GitHub 下载新版'
       } else {
         put('更新失败，请检查网络或仓库地址', 'err')
         hint.textContent = '更新失败'
@@ -1381,6 +1410,40 @@ function initHoverPreview() {
   document.addEventListener('click', hide, true)
 }
 initHoverPreview()
+
+/* ---------- 点击外部自动收起面板 ---------- */
+// 需求：表情面板 / 麦克风测试弹层 / 设置面板，点开后随意点别处就收起
+{
+  const layers = [
+    { get el() { return $('#pickerPanel') }, isOpen: () => !$('#pickerPanel').classList.contains('hidden'), close: () => $('#pickerPanel').classList.add('hidden') },
+    { get el() { return $('#audioPop') }, isOpen: () => $('#audioPop').open, close: () => { $('#audioPop').open = false } },
+    { get el() { return $('#settingsModal') }, isOpen: () => !$('#settingsModal').classList.contains('hidden'), close: () => closeSettings() }
+  ]
+  const TRIGGERS = '#emojiBtn, #audioPop > summary, #settingsBtn, #themeBtnJoin'
+  // capture 阶段监听：设置面板的全屏遮罩会吞掉冒泡事件，capture 才能先收到
+  document.addEventListener('mousedown', e => {
+    const t = e.target
+    // 点在触发按钮上时不收起（否则点开即关）
+    if (t.closest && t.closest(TRIGGERS)) return
+    // 点在设置面板遮罩上（面板之外）→ 关闭设置
+    if (t.id === 'settingsModal') { closeSettings(); return }
+    // 点在某个已打开面板内部时不收起
+    for (const l of layers) {
+      if (!l.isOpen()) continue
+      const el = l.el
+      if (!el) continue
+      const r = el.getBoundingClientRect()
+      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return
+    }
+    layers.forEach(l => { if (l.isOpen()) l.close() })
+  }, true)
+  // ESC 也能关
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') layers.forEach(l => { if (l.isOpen()) l.close() })
+  })
+}
+
+// 自动进房（供测试/邀请链接用）
 {
   const q = new URLSearchParams(location.search)
   if (q.get('room')) {
