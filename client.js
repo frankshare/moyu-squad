@@ -1498,13 +1498,14 @@ initHoverPreview()
     if (t.closest && t.closest(TRIGGERS)) return
     // 点在设置面板遮罩上（面板之外）→ 关闭设置
     if (t.id === 'settingsModal') { closeSettings(); return }
-    // 点在某个已打开面板内部时不收起
+    // 点在某个已打开面板内部时不收起（contains = DOM 包含关系，
+    // 别用 getBoundingClientRect 几何判定：pop-panel 绝对定位悬浮在 details 外面，
+    // 几何矩形只盖住 summary 按钮，点面板内容会被误判为「外部」而点开即关）
     for (const l of layers) {
       if (!l.isOpen()) continue
       const el = l.el
       if (!el) continue
-      const r = el.getBoundingClientRect()
-      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return
+      if (el.contains(t)) return
     }
     layers.forEach(l => { if (l.isOpen()) l.close() })
   }, true)
