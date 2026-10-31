@@ -30,119 +30,114 @@ const DOMESTIC_STUN = [
   { urls: ['stun:stun.miwifi.com:3478', 'stun:stun.qq.com:3478'] }
 ]
 
-/* ═════════ 主题系统（8 套配色） ═════════ */
+/* ═════════ 主题系统（8 套配色 · Token v2：浮起=更亮 + alpha 文字描边） ═════════ */
 const BASE_DARK = {
-  '--panel': '#151a22', '--card': '#1a2029', '--card-2': '#171c24',
-  '--line': '#2a313d', '--line-strong': '#3a4452',
-  '--text': '#e6eaf2', '--dim': '#98a2b3', '--faint': '#6b7686',
-  '--pri-text': 'rgba(240, 244, 252, .95)',
-  '--pri-hi': 'rgba(255, 255, 255, .14)', '--pri-lo': 'rgba(0, 0, 0, .22)',
-  '--pri-sa': 'rgba(0, 0, 0, .45)', '--pri-sb': 'rgba(0, 0, 0, .55)',
-  '--meter-bg': '#10141b',
-  '--ghost-hover': 'rgba(128, 140, 165, .14)', '--ghost-border': 'rgba(128, 140, 165, .3)',
-  '--kbd-bg': 'rgba(0, 0, 0, .28)', '--kbd-border': 'rgba(255, 255, 255, .14)',
-  '--muted-btn-text': 'rgba(244, 246, 250, .6)',
+  '--text': 'rgba(255, 255, 255, .92)',
+  '--dim': 'rgba(255, 255, 255, .60)',
+  '--faint': 'rgba(255, 255, 255, .38)',
+  '--line': 'rgba(255, 255, 255, .07)',
+  '--line-strong': 'rgba(255, 255, 255, .15)',
+  '--pri-edge': 'rgba(0, 0, 0, .25)',
+  '--pri-edge-active': 'rgba(0, 0, 0, .35)',
+  '--pri-text': 'var(--on-accent)',
+  '--pri-hi': 'rgba(255, 255, 255, .22)',
+  '--pri-lo': 'rgba(0, 0, 0, .18)',
+  '--pri-sa': 'rgba(0, 0, 0, .35)',
+  '--meter-bg': 'rgba(0, 0, 0, .35)',
+  '--ghost-hover': 'rgba(255, 255, 255, .06)',
+  '--ghost-border': 'rgba(255, 255, 255, .14)',
+  '--kbd-bg': 'rgba(0, 0, 0, .28)',
+  '--kbd-border': 'rgba(255, 255, 255, .14)',
+  '--muted-btn-text': 'rgba(255, 255, 255, .55)',
   '--modal-shadow': '0 1px 0 rgba(255,255,255,.05) inset, 0 18px 60px rgba(0,0,0,.55)'
 }
 const BASE_LIGHT = {
-  '--panel': '#ffffff', '--card': '#f9fafc', '--card-2': '#f2f4f8',
-  '--line': '#e2e7ef', '--line-strong': '#c9d2df',
-  '--text': '#263041', '--dim': '#5f6b7f', '--faint': '#96a1b3',
-  '--pri-text': '#2b3446',
-  '--pri-hi': 'rgba(255, 255, 255, .9)', '--pri-lo': 'rgba(16, 24, 40, .07)',
-  '--pri-sa': 'rgba(16, 24, 40, .08)', '--pri-sb': 'rgba(16, 24, 40, .13)',
-  '--meter-bg': '#e8ecf2',
-  '--ghost-hover': 'rgba(38, 48, 65, .07)', '--ghost-border': 'rgba(38, 48, 65, .2)',
-  '--kbd-bg': 'rgba(0, 0, 0, .06)', '--kbd-border': 'rgba(0, 0, 0, .12)',
-  '--muted-btn-text': 'rgba(43, 52, 70, .5)',
+  '--text': 'rgba(20, 26, 38, .92)',
+  '--dim': 'rgba(20, 26, 38, .62)',
+  '--faint': 'rgba(20, 26, 38, .42)',
+  '--line': 'rgba(20, 26, 38, .08)',
+  '--line-strong': 'rgba(20, 26, 38, .16)',
+  '--pri-edge': 'rgba(16, 24, 40, .18)',
+  '--pri-edge-active': 'rgba(16, 24, 40, .28)',
+  '--pri-text': '#ffffff',
+  '--pri-hi': 'rgba(255, 255, 255, .28)',
+  '--pri-lo': 'rgba(16, 24, 40, .10)',
+  '--pri-sa': 'rgba(16, 24, 40, .12)',
+  '--meter-bg': 'rgba(16, 24, 40, .08)',
+  '--ghost-hover': 'rgba(38, 48, 65, .07)',
+  '--ghost-border': 'rgba(38, 48, 65, .2)',
+  '--kbd-bg': 'rgba(0, 0, 0, .06)',
+  '--kbd-border': 'rgba(0, 0, 0, .12)',
+  '--muted-btn-text': 'rgba(255, 255, 255, .78)',
   '--modal-shadow': '0 1px 0 rgba(255,255,255,.8) inset, 0 18px 60px rgba(16,24,40,.18)'
 }
 const THEMES = [
   {
     id: 'deepblue', name: '深邃蓝', dark: true, vars: {
-      '--bg': '#0d1117',
-      '--accent': '#4f8cff', '--accent-dim': 'rgba(79,140,255,.16)', '--accent-hi': '#6ea3ff', '--accent-lo': '#2f66d9', '--on-accent': '#ffffff',
-      '--pri-face-a': '#33405c', '--pri-face-b': '#232e47', '--pri-face-a-hover': '#3b4a6b', '--pri-face-b-hover': '#28355a',
-      '--pri-edge': '#1c2436', '--pri-edge-active': '#141b2b',
-      '--sec-face-a': '#ffffff', '--sec-face-b': '#eef1f6', '--sec-edge': '#d5dae4', '--sec-text': '#2b3446',
-      '--bad': '#e5484d', '--warn': '#e2b53e', '--good': '#2dd4a7'
+      '--bg': '#0b0e14', '--panel': '#11151d', '--card': '#171c26', '--card-2': '#1e2432', '--pop': '#262d3f',
+      '--accent': '#4f8cff', '--accent-dim': 'rgba(79,140,255,.16)', '--accent-hi': '#78a7ff', '--accent-lo': '#2f66d9', '--on-accent': '#ffffff',
+      '--acc-glow': 'rgba(79,140,255,.35)',
+      '--sec-face-a': 'rgba(79,140,255,.16)', '--sec-face-b': 'rgba(79,140,255,.16)', '--sec-edge': 'rgba(79,140,255,.32)', '--sec-text': '#9dc0ff',
+      '--bad': '#e5484d', '--warn': '#e8a33d', '--good': '#34d399'
     }
   },
   {
     id: 'aurora', name: '极光之夜', dark: true, vars: {
-      '--bg': '#0a0f13', '--panel': '#0e161b', '--card': '#121b21', '--card-2': '#0f181e',
-      '--line': '#1f2d36', '--line-strong': '#2b3f4a',
-      '--text': '#e2ecef', '--dim': '#8fa3ab', '--faint': '#5f7178',
-      '--accent': '#2dd4bf', '--accent-dim': 'rgba(45,212,191,.15)', '--accent-hi': '#4fe3cf', '--accent-lo': '#17a08e', '--on-accent': '#04201c',
-      '--pri-face-a': '#1f4347', '--pri-face-b': '#142c31', '--pri-face-a-hover': '#275256', '--pri-face-b-hover': '#193740',
-      '--pri-edge': '#0e2226', '--pri-edge-active': '#0a1a1e',
-      '--sec-face-a': '#ffffff', '--sec-face-b': '#eef4f3', '--sec-edge': '#d3e0de', '--sec-text': '#1c302d',
+      '--bg': '#0a0f13', '--panel': '#0e161b', '--card': '#121b21', '--card-2': '#182530', '--pop': '#20303c',
+      '--accent': '#2dd4bf', '--accent-dim': 'rgba(45,212,191,.15)', '--accent-hi': '#5fe8d8', '--accent-lo': '#17a08e', '--on-accent': '#04201c',
+      '--acc-glow': 'rgba(45,212,191,.32)',
+      '--sec-face-a': 'rgba(45,212,191,.15)', '--sec-face-b': 'rgba(45,212,191,.15)', '--sec-edge': 'rgba(45,212,191,.32)', '--sec-text': '#7fe8dc',
       '--good': '#2dd4bf'
     }
   },
   {
     id: 'maillard', name: '美拉德', dark: true, vars: {
-      '--bg': '#151009', '--panel': '#1d1710', '--card': '#231b13', '--card-2': '#1d1710',
-      '--line': '#3a2d1f', '--line-strong': '#4d3c2a',
-      '--text': '#efe6db', '--dim': '#b3a18c', '--faint': '#85745f',
+      '--bg': '#12100c', '--panel': '#171410', '--card': '#1d1913', '--card-2': '#26201a', '--pop': '#332b22',
       '--accent': '#e0a35c', '--accent-dim': 'rgba(224,163,92,.16)', '--accent-hi': '#f0bc7d', '--accent-lo': '#c1802f', '--on-accent': '#211503',
-      '--pri-face-a': '#4a3826', '--pri-face-b': '#33251a', '--pri-face-a-hover': '#5a4430', '--pri-face-b-hover': '#3d2d20',
-      '--pri-edge': '#241a10', '--pri-edge-active': '#1a120a',
-      '--sec-face-a': '#fffdf9', '--sec-face-b': '#f0e6dc', '--sec-edge': '#dccbb9', '--sec-text': '#3d2f27',
+      '--acc-glow': 'rgba(224,163,92,.30)',
+      '--sec-face-a': 'rgba(224,163,92,.16)', '--sec-face-b': 'rgba(224,163,92,.16)', '--sec-edge': 'rgba(224,163,92,.32)', '--sec-text': '#f0bc7d',
       '--warn': '#e0a35c'
     }
   },
   {
     id: 'dopamine', name: '多巴胺', dark: true, vars: {
-      '--bg': '#120d17', '--panel': '#191124', '--card': '#1f1530', '--card-2': '#191124',
-      '--line': '#33244b', '--line-strong': '#453062',
-      '--text': '#eee6f7', '--dim': '#a892c4', '--faint': '#7a6a94',
+      '--bg': '#110d16', '--panel': '#161120', '--card': '#1c162a', '--card-2': '#241d37', '--pop': '#2f2749',
       '--accent': '#ff4d8d', '--accent-dim': 'rgba(255,77,141,.16)', '--accent-hi': '#ff7bb0', '--accent-lo': '#e02565', '--on-accent': '#ffffff',
-      '--pri-face-a': '#442a5e', '--pri-face-b': '#2e1d42', '--pri-face-a-hover': '#52356f', '--pri-face-b-hover': '#382350',
-      '--pri-edge': '#221533', '--pri-edge-active': '#180f26'
+      '--acc-glow': 'rgba(255,77,141,.35)',
+      '--sec-face-a': 'rgba(255,77,141,.16)', '--sec-face-b': 'rgba(255,77,141,.16)', '--sec-edge': 'rgba(255,77,141,.32)', '--sec-text': '#ff9cc0'
     }
   },
   {
     id: 'mica', name: '云母白', dark: false, vars: {
-      '--bg': '#f4f6f9',
+      '--bg': '#eef1f6', '--panel': '#ffffff', '--card': '#ffffff', '--card-2': '#f2f4f8', '--pop': '#e8ecf2',
       '--accent': '#2f6bff', '--accent-dim': 'rgba(47,107,255,.12)', '--accent-hi': '#5c8cff', '--accent-lo': '#1d4fd7', '--on-accent': '#ffffff',
-      '--pri-face-a': '#ffffff', '--pri-face-b': '#eef1f6', '--pri-face-a-hover': '#ffffff', '--pri-face-b-hover': '#f7f9fb',
-      '--pri-edge': '#d5dae4', '--pri-edge-active': '#c3cbd8',
-      '--sec-face-a': '#ffffff', '--sec-face-b': '#eef1f6', '--sec-edge': '#d5dae4', '--sec-text': '#2b3446',
+      '--acc-glow': 'rgba(47,107,255,.25)',
+      '--sec-face-a': 'rgba(47,107,255,.10)', '--sec-face-b': 'rgba(47,107,255,.10)', '--sec-edge': 'rgba(47,107,255,.28)', '--sec-text': '#1d4fd7',
       '--bad': '#d93a3f'
     }
   },
   {
     id: 'mocha', name: '摩卡慕斯', dark: false, vars: {
-      '--bg': '#f5efe9', '--panel': '#fffdf9', '--card': '#faf5ef', '--card-2': '#f0e8df',
-      '--line': '#e4d8cb', '--line-strong': '#d0bfae',
-      '--text': '#3d2f27', '--dim': '#7d6c5e', '--faint': '#a4937f',
+      '--bg': '#f5efe9', '--panel': '#fffdf9', '--card': '#fffdf9', '--card-2': '#f0e8df', '--pop': '#e6dcd0',
       '--accent': '#a47864', '--accent-dim': 'rgba(164,120,100,.15)', '--accent-hi': '#c29b85', '--accent-lo': '#825c4a', '--on-accent': '#ffffff',
-      '--pri-face-a': '#fffdf9', '--pri-face-b': '#f0e6dc', '--pri-face-a-hover': '#ffffff', '--pri-face-b-hover': '#f5ece3',
-      '--pri-edge': '#d9c8b8', '--pri-edge-active': '#cbb8a6',
-      '--sec-face-a': '#fffdf9', '--sec-face-b': '#f0e6dc', '--sec-edge': '#d9c8b8', '--sec-text': '#3d2f27'
+      '--acc-glow': 'rgba(164,120,100,.28)',
+      '--sec-face-a': 'rgba(164,120,100,.12)', '--sec-face-b': 'rgba(164,120,100,.12)', '--sec-edge': 'rgba(164,120,100,.30)', '--sec-text': '#825c4a'
     }
   },
   {
     id: 'morandi', name: '莫兰迪', dark: false, vars: {
-      '--bg': '#f1f2f0', '--panel': '#fbfcfa', '--card': '#f6f7f4', '--card-2': '#eaede9',
-      '--line': '#dde1da', '--line-strong': '#c4ccc2',
-      '--text': '#333b36', '--dim': '#6d776e', '--faint': '#97a09a',
+      '--bg': '#f1f2f0', '--panel': '#fbfcfa', '--card': '#fbfcfa', '--card-2': '#eaede9', '--pop': '#dfe3dc',
       '--accent': '#7d9184', '--accent-dim': 'rgba(125,145,132,.15)', '--accent-hi': '#9ab0a1', '--accent-lo': '#5f7266', '--on-accent': '#ffffff',
-      '--pri-face-a': '#fbfcfa', '--pri-face-b': '#eaede9', '--pri-face-a-hover': '#ffffff', '--pri-face-b-hover': '#f0f2ee',
-      '--pri-edge': '#c9d1c6', '--pri-edge-active': '#b9c2b8',
-      '--sec-face-a': '#fbfcfa', '--sec-face-b': '#eaede9', '--sec-edge': '#c9d1c6', '--sec-text': '#333b36'
+      '--acc-glow': 'rgba(125,145,132,.28)',
+      '--sec-face-a': 'rgba(125,145,132,.12)', '--sec-face-b': 'rgba(125,145,132,.12)', '--sec-edge': 'rgba(125,145,132,.30)', '--sec-text': '#5f7266'
     }
   },
   {
     id: 'matcha', name: '抹茶', dark: false, vars: {
-      '--bg': '#f2f5ea', '--panel': '#fbfdf4', '--card': '#f6f9ee', '--card-2': '#ecf2e2',
-      '--line': '#dde6d2', '--line-strong': '#c6d4b6',
-      '--text': '#2e3a2c', '--dim': '#6f7f68', '--faint': '#9aab92',
+      '--bg': '#f2f5ea', '--panel': '#fbfdf4', '--card': '#fbfdf4', '--card-2': '#ecf2e2', '--pop': '#e0e9d2',
       '--accent': '#6f9e4f', '--accent-dim': 'rgba(111,158,79,.15)', '--accent-hi': '#93c274', '--accent-lo': '#55803a', '--on-accent': '#ffffff',
-      '--pri-face-a': '#fbfdf4', '--pri-face-b': '#ecf2e2', '--pri-face-a-hover': '#ffffff', '--pri-face-b-hover': '#f1f6e8',
-      '--pri-edge': '#cbd8bd', '--pri-edge-active': '#b9cab0',
-      '--sec-face-a': '#fbfdf4', '--sec-face-b': '#ecf2e2', '--sec-edge': '#cbd8bd', '--sec-text': '#2e3a2c'
+      '--acc-glow': 'rgba(111,158,79,.28)',
+      '--sec-face-a': 'rgba(111,158,79,.12)', '--sec-face-b': 'rgba(111,158,79,.12)', '--sec-edge': 'rgba(111,158,79,.30)', '--sec-text': '#55803a'
     }
   }
 ]
@@ -343,16 +338,20 @@ function setMode(mode) {
   applyMuteState()
   send({ t: 'state', muted: false })
 }
+// 麦克风状态图标（SVG：开 = 麦克风；静音 = 麦克风+斜线）
+const MIC_SVG_ON = '<svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>'
+const MIC_SVG_OFF = '<svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/><line x1="2" y1="2" x2="22" y2="22"/></svg>'
+function setMicIcon(muted) { $('#micIcon').innerHTML = muted ? MIC_SVG_OFF : MIC_SVG_ON }
 function refreshMicUI() {
   const btn = $('#muteBtn')
   if (state.mode === 'ptt') {
     $('#micLabel').textContent = state.muted ? '已静音' : (state.pttDown ? '说话中…' : '按住说话')
-    $('#micIcon').textContent = state.muted ? '🔇' : '🎙️'
+    setMicIcon(state.muted)
     btn.classList.toggle('ptt-live', state.pttDown && !state.muted)
     btn.classList.toggle('muted', state.muted)
   } else {
     $('#micLabel').textContent = state.muted ? '已静音' : '麦克风开'
-    $('#micIcon').textContent = state.muted ? '🔇' : '🎙️'
+    setMicIcon(state.muted)
     btn.classList.toggle('ptt-live', false)
     btn.classList.toggle('muted', state.muted)
   }
@@ -481,8 +480,9 @@ function addCard(id, name, isSelf) {
     <div class="m-avatar"></div>
     <div class="m-name"></div>
     <div class="m-sub">${isSelf ? '我' : '连接中…'}</div>
+    <div class="eq"><i></i><i></i><i></i><i></i></div>
     <div class="m-meter"><i></i></div>
-    <div class="m-vol"><span class="vol-ico">🔈</span><input type="range" min="0" max="100" value="100" title="调节音量" /><button class="m-mute" title="单独静音">🔊</button></div>`
+    <div class="m-vol"><span class="vol-ico"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span><input type="range" min="0" max="100" value="100" title="调节音量" /><button class="m-mute" title="单独静音"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M22.54 2.22a13.94 13.94 0 0 1 0 19.56" opacity=".55"/></svg></button></div>`
   el.querySelector('.m-avatar').textContent = avatarOf(name)
   el.querySelector('.m-name').textContent = name + (isSelf ? '（我）' : '')
   if (!isSelf) {
@@ -494,7 +494,10 @@ function addCard(id, name, isSelf) {
       const p = state.peers.get(id)
       if (!p) return
       p.locMuted = !p.locMuted
-      e.currentTarget.textContent = p.locMuted ? '🔇' : '🔊'
+      // 单独静音图标：静音 = 喇叭+斜线，开 = 喇叭+声波
+      e.currentTarget.innerHTML = p.locMuted
+        ? '<svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+        : '<svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M22.54 2.22a13.94 13.94 0 0 1 0 19.56" opacity=".55"/></svg>'
       e.currentTarget.classList.toggle('on', p.locMuted)
       if (p.audio) p.audio.volume = p.locMuted ? 0 : p.volume * state.masterVol
     })
@@ -506,7 +509,19 @@ function addCard(id, name, isSelf) {
 }
 function updateMemberCount() {
   const el = $('#memberCount')
-  if (el && state.inRoom) el.textContent = '👥 ' + (state.peers.size + 1)
+  if (el && state.inRoom) {
+    const n = state.peers.size + 1
+    // 保留 SVG 人形图标（原 HTML 里有），只更新数字文本节点
+    if (el.querySelector('svg')) {
+      let done = false
+      el.childNodes.forEach(nd => {
+        if (nd.nodeType === 3 && nd.textContent.trim()) { nd.textContent = ' ' + n; done = true }
+      })
+      if (!done) el.insertAdjacentText('beforeend', ' ' + n)
+    } else {
+      el.textContent = n
+    }
+  }
 }
 function cardOf(id) { return document.getElementById('card-' + id) }
 function removeCard(id) { cardOf(id)?.remove(); updateMemberCount() }
@@ -515,7 +530,7 @@ function setPeerMuted(id, muted) {
   const p = state.peers.get(id)
   if (p) p.muted = muted
   const c = cardOf(id)
-  if (c) c.querySelector('.m-sub').textContent = muted ? '🔇 已静音' : (p && p.online ? '✅ 声音正常' : '连接中…')
+  if (c) c.querySelector('.m-sub').textContent = muted ? '已静音' : (p && p.online ? '声音正常' : '连接中…')
 }
 
 /* ---------- ICE 配置 ---------- */
@@ -736,7 +751,7 @@ function createPC(id, name, initiator, muted) {
     if (pc.connectionState === 'connected') {
       p.online = true
       console.log('PEER_CONNECTED', id)
-      if (!p.muted) setPeerSub(id, '✅ 声音正常')
+      if (!p.muted) setPeerSub(id, '声音正常')
     } else if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
       p.online = false
       setPeerSub(id, '连接断开')
