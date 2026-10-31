@@ -92,6 +92,9 @@ export class Room {
 // 配置了 TURN_KEY_ID + TURN_KEY_SECRET（secrets，即 Realtime TURN key 的 Token ID/API Token）后，
 // 经 rtc.live.cloudflare.com 热签发 24 小时临时凭据（缓存 1 小时）；
 // 未配置或调用失败时降级为静态兜底（含免费公共 TURN）。
+function json404(msg) {
+  return new Response(msg, { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } })
+}
 const STATIC_ICE = {
   iceServers: [
     // 国内 STUN 常驻：UDP 3478 常被拦，只有部分（如小米）可达；
@@ -146,6 +149,35 @@ export default {
         return new Response(JSON.stringify(ice), {
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         })
+      }
+      // /gh-proxy/*：GitHub Releases 下载代理。国内直连 objects.githubusercontent.com 基本必挂，
+      // 应用内更新下载走这里中转（Worker 与 GitHub 之间在国际骨干上，快且稳）。
+      // 用法：/gh-proxy?url=<encodeURIComponent(完整 GitHub 下载地址)>
+      if (url.pathname === '/gh-proxy') {
+        const target = url.searchParams.get('url') || ''
+        // 只放行本仓库的 Releases 下载地址，防止被当公共代理滥用
+        let t
+        try { t = new URL(target) } catch { return json404('bad url') }
+        const hostOk = t.hostname === 'github.com' || t.hostname === 'api.github.com' ||
+          t.hostname.endsWith('.githubusercontent.com') || t.hostname === 'codeload.github.com'
+        const repoOk = t.pathname.startsWith('/frankshare/moyu-squad')
+        if (!hostOk || !repoOk) return json404('blocked')
+        const upstream = await fetch(t.href, {
+          redirect: 'follow',
+          headers: { 'User-Agent': 'moyu-squad-update-proxy' },
+          cf: { cacheTtl: 0 }
+        })
+        if (!upstream.ok) {
+          return new Response('upstream ' + upstream.status, { status: 502, headers: { 'Access-Control-Allow-Origin': '*' } })
+        }
+        const h = new Headers()
+        const len = upstream.headers.get('content-length')
+        if (len) h.set('Content-Length', len)
+        const type = upstream.headers.get('content-type')
+        if (type) h.set('Content-Type', type)
+        h.set('Access-Control-Allow-Origin', '*')
+        h.set('Cache-Control', 'no-cache')
+        return new Response(upstream.body, { status: 200, headers: h })
       }
       // 静态资源禁缓存：每次部署即刻生效，客户端不会拿到旧版页面
       const res = await env.ASSETS.fetch(req)

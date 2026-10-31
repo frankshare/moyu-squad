@@ -131,29 +131,61 @@ async function electron_download(url) {
   const fs = require('fs')
   const path = require('path')
   const { app } = require('electron')
-  const r = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(20 * 60 * 1000) })
-  if (!r.ok) return { ok: false, msg: '下载失败 HTTP ' + r.status }
-  const total = Number(r.headers.get('content-length') || 0)
-  const name = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'moyu-squad-setup.exe'
-  const dir = path.join(app.getPath('temp'), 'moyu-update')
-  fs.mkdirSync(dir, { recursive: true })
-  const file = path.join(dir, name)
-  const ws = fs.createWriteStream(file)
-  let got = 0
-  const reader = r.body.getReader()
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    got += value.length
-    if (!ws.write(Buffer.from(value))) await new Promise(res => ws.once('drain', res))
+  // 多源重试：GitHub 下载地址会先走自家 Worker 代理（国内直连 objects.githubusercontent.com 基本必挂），
+  // 代理失败再退回直连；非 GitHub 地址直接下。
+  let lastErr = '下载失败'
+  for (const cand of downloadCandidates(url)) {
+    try {
+      const r = await fetch(cand, { redirect: 'follow', signal: AbortSignal.timeout(20 * 60 * 1000) })
+      if (!r.ok) { lastErr = '下载失败 HTTP ' + r.status + (cand !== url ? '（代理线路）' : '（直连线路）'); continue }
+      const total = Number(r.headers.get('content-length') || 0)
+      const name = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'moyu-squad-setup.exe'
+      const dir = path.join(app.getPath('temp'), 'moyu-update')
+      fs.mkdirSync(dir, { recursive: true })
+      const file = path.join(dir, name)
+      const ws = fs.createWriteStream(file)
+      let got = 0
+      const reader = r.body.getReader()
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        got += value.length
+        if (!ws.write(Buffer.from(value))) await new Promise(res => ws.once('drain', res))
+      }
+      await new Promise(res => ws.end(res))
+      // 完整性校验：GitHub 声明了大小但拿到的字节数明显不符 → 换线路重试
+      if (total && got && Math.abs(got - total) > 1024) {
+        ws.close(); try { fs.unlinkSync(file) } catch {}
+        lastErr = '下载不完整（' + got + '/' + total + '）'
+        continue
+      }
+      return { ok: true, path: file, size: got, total }
+    } catch (err) {
+      lastErr = (err && err.name === 'TimeoutError') ? '下载超时' : (err.message || String(err))
+    }
   }
-  await new Promise(res => ws.end(res))
-  return { ok: true, path: file, size: got, total }
+  return { ok: false, msg: lastErr }
 }
 
 // ── 检查更新（GitHub Releases，无需 git / 无需代理） ──
 const RELEASES_API = 'https://api.github.com/repos/frankshare/moyu-squad/releases/latest'
 const RELEASES_PAGE = 'https://github.com/frankshare/moyu-squad/releases/latest'
+// 更新包下载代理：国内直连 objects.githubusercontent.com 基本必挂，
+// 走自家 Cloudflare Worker 中转（信令同域，国内可达），失败再退直连。
+const DOWNLOAD_PROXY = 'https://moyu.summersol.dpdns.org/gh-proxy?url='
+
+// 把 GitHub 下载地址包成候选列表：代理优先，直连兜底
+function downloadCandidates(url) {
+  const list = []
+  try {
+    const u = new URL(url)
+    const isGh = (u.hostname === 'github.com' && u.pathname.includes('/releases/download/')) ||
+      u.hostname.endsWith('.githubusercontent.com')
+    if (isGh) list.push(DOWNLOAD_PROXY + encodeURIComponent(url))
+  } catch {}
+  list.push(url)
+  return list
+}
 
 // 运行环境探测：安装版（无 .git）vs 源码版（有 .git）
 function detectRepoDir() {
