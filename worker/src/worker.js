@@ -150,6 +150,12 @@ export default {
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         })
       }
+      // /speedtest：4MB 内存缓冲直出，测「用户↔边缘」裸速度（隔离 GitHub 段）
+      if (url.pathname === '/speedtest') {
+        return new Response(new ArrayBuffer(4 * 1024 * 1024), {
+          headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(4 * 1024 * 1024), 'Access-Control-Allow-Origin': '*' }
+        })
+      }
       // /gh-proxy/*：GitHub Releases 下载代理。国内直连 objects.githubusercontent.com 基本必挂，
       // 应用内更新下载走这里中转（Worker 与 GitHub 之间在国际骨干上，快且稳）。
       // 用法：/gh-proxy?url=<encodeURIComponent(完整 GitHub 下载地址)>
@@ -162,22 +168,29 @@ export default {
           t.hostname.endsWith('.githubusercontent.com') || t.hostname === 'codeload.github.com'
         const repoOk = t.pathname.startsWith('/frankshare/moyu-squad')
         if (!hostOk || !repoOk) return json404('blocked')
+        // Range 透传：客户端分段并行下载依赖 206 + Content-Range
+        const upHeaders = { 'User-Agent': 'moyu-squad-update-proxy' }
+        const range = req.headers.get('range')
+        if (range) upHeaders['Range'] = range
         const upstream = await fetch(t.href, {
           redirect: 'follow',
-          headers: { 'User-Agent': 'moyu-squad-update-proxy' },
+          headers: upHeaders,
           cf: { cacheTtl: 0 }
         })
-        if (!upstream.ok) {
+        if (!upstream.ok && upstream.status !== 206) {
           return new Response('upstream ' + upstream.status, { status: 502, headers: { 'Access-Control-Allow-Origin': '*' } })
         }
         const h = new Headers()
         const len = upstream.headers.get('content-length')
         if (len) h.set('Content-Length', len)
+        const cr = upstream.headers.get('content-range')
+        if (cr) h.set('Content-Range', cr)
         const type = upstream.headers.get('content-type')
         if (type) h.set('Content-Type', type)
         h.set('Access-Control-Allow-Origin', '*')
         h.set('Cache-Control', 'no-cache')
-        return new Response(upstream.body, { status: 200, headers: h })
+        h.set('Accept-Ranges', 'bytes')
+        return new Response(upstream.body, { status: upstream.status, headers: h })
       }
       // 静态资源禁缓存：每次部署即刻生效，客户端不会拿到旧版页面
       const res = await env.ASSETS.fetch(req)

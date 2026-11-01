@@ -133,16 +133,28 @@ async function electron_download(url) {
   const { app } = require('electron')
   // 多源重试：GitHub 下载地址会先走自家 Worker 代理（国内直连 objects.githubusercontent.com 基本必挂），
   // 代理失败再退回直连；非 GitHub 地址直接下。
+  // 每条线路先试多连接分片（国内出口单连接限速 ~0.1MB/s，8 连接能到 ~0.8MB/s），失败退单流。
   let lastErr = '下载失败'
   for (const cand of downloadCandidates(url)) {
+    const name = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'moyu-squad-setup.exe'
+    const dir = path.join(app.getPath('temp'), 'moyu-update')
+    fs.mkdirSync(dir, { recursive: true })
+    const file = path.join(dir, name)
+    // ① 多连接分片（仅代理线路——直连 GitHub 的 CDN 连 TLS 都过不了，分片无意义）
+    if (cand !== url) {
+      try {
+        const r = await parallelDownload(cand, file)
+        if (r && r.ok) return { ok: true, path: file, size: r.size, total: r.total }
+      } catch (err) {
+        lastErr = '分片下载失败：' + (err.message || err)
+        try { fs.unlinkSync(file) } catch {}
+      }
+    }
+    // ② 单流兜底（直连线路 / 分片不支持的源）
     try {
       const r = await fetch(cand, { redirect: 'follow', signal: AbortSignal.timeout(20 * 60 * 1000) })
       if (!r.ok) { lastErr = '下载失败 HTTP ' + r.status + (cand !== url ? '（代理线路）' : '（直连线路）'); continue }
       const total = Number(r.headers.get('content-length') || 0)
-      const name = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'moyu-squad-setup.exe'
-      const dir = path.join(app.getPath('temp'), 'moyu-update')
-      fs.mkdirSync(dir, { recursive: true })
-      const file = path.join(dir, name)
       const ws = fs.createWriteStream(file)
       let got = 0
       const reader = r.body.getReader()
@@ -165,6 +177,137 @@ async function electron_download(url) {
     }
   }
   return { ok: false, msg: lastErr }
+}
+
+/* ─────────── 多连接分片下载器 ───────────
+   国内到 Cloudflare 边缘的单 TCP 连接被限速在 ~0.1MB/s（实测 12 个 IP 一致），
+   出口按连接数限速 → 用 N 条 Range 分片并行，吞吐近似 ×N。
+   边缘 IP 在本机也可能时好时坏（有的 IP TLS 直接超时），所以先并发探测选最快的几颗。 */
+const DL_HOST = 'moyu.summersol.dpdns.org'
+const CF_IP_POOL = [
+  '104.18.32.7', '172.64.80.10', '104.20.32.48', '104.17.32.10', '188.114.96.3',
+  '104.21.27.22', '172.67.140.236', '162.159.135.42', '104.19.195.21', '104.16.132.229'
+]
+
+// 用 node:https 手动指定连接 IP：host=IP、servername=域名（SNI/证书校验都按域名走）
+function httpsProbe(ip, path, timeoutMs) {
+  const https = require('https')
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      host: ip, port: 443, servername: DL_HOST, path,
+      method: 'GET',
+      headers: { Host: DL_HOST, 'User-Agent': 'moyu-squad-edge-probe', 'Accept-Encoding': 'identity' },
+      timeout: timeoutMs
+    }, res => {
+      res.resume()
+      let bytes = 0
+      const t0 = Date.now()
+      res.on('data', c => { bytes += c.length })
+      res.on('end', () => resolve({ ip, bytes, ms: Date.now() - t0 }))
+    })
+    req.on('timeout', () => { req.destroy(new Error('probe timeout')) })
+    req.on('error', reject)
+    req.end()
+  })
+}
+
+// 并发探测 IP 池，按「探测期吞吐」排序取前 n 个（探测下载 128KB，2 个并行批次足够）
+async function pickFastIPs(n) {
+  const { dns } = require('dns').promises ? require('dns').promises : require('dns')
+  const ips = [...CF_IP_POOL]
+  try {
+    const a = await require('dns').promises.resolve4(DL_HOST)
+    for (const ip of a) if (!ips.includes(ip)) ips.unshift(ip)   // 官方解析的优先测
+  } catch {}
+  const results = await Promise.allSettled(ips.map(ip => httpsProbe(ip, '/speedtest', 6000)))
+  const ok = results.filter(r => r.status === 'fulfilled' && r.value.bytes > 65536)
+    .map(r => ({ ip: r.value.ip, speed: r.value.bytes / Math.max(1, r.value.ms) }))
+    .sort((a, b) => b.speed - a.speed)
+  return ok.slice(0, n).map(r => r.ip)
+}
+
+// 单分片：Range 请求 + 按偏移写文件，自带 1 次重试
+async function downloadSegment(ip, urlPath, start, end, fd, file, attempts) {
+  const fs = require('fs')
+  const https = require('https')
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await new Promise((resolve, reject) => {
+        const req = https.request({
+          host: ip, port: 443, servername: DL_HOST, path: urlPath,
+          method: 'GET',
+          headers: { Host: DL_HOST, 'User-Agent': 'moyu-squad-update', 'Accept-Encoding': 'identity', Range: `bytes=${start}-${end}` },
+          timeout: 120000
+        }, res => {
+          if (res.statusCode !== 206 && res.statusCode !== 200) { res.resume(); return reject(new Error('分片 HTTP ' + res.statusCode)) }
+          let pos = start
+          res.on('data', c => {
+            const buf = Buffer.from(c)
+            fs.writeSync(fd, buf, 0, buf.length, pos)
+            pos += buf.length
+          })
+          res.on('end', () => pos >= end + 1 ? resolve(pos - start) : reject(new Error(`分片不完整 ${pos - start}/${end - start + 1}`)))
+        })
+        req.on('timeout', () => req.destroy(new Error('分片超时')))
+        req.on('error', reject)
+        req.end()
+      })
+    } catch (err) {
+      if (i === attempts - 1) throw err
+      await new Promise(r => setTimeout(r, 800))
+    }
+  }
+}
+
+// 主流程：探测 IP → 取总大小 → 8 分片并行 → 校验
+async function parallelDownload(proxyUrl, file) {
+  const fs = require('fs')
+  const SEGS = 8
+  const ips = await pickFastIPs(Math.min(6, SEGS))
+  if (!ips.length) throw new Error('无可用边缘节点')
+  const urlObj = new URL(proxyUrl)
+  const urlPath = urlObj.pathname + urlObj.search
+  // 总大小：Range 0-0 拿 content-range（206 响应）
+  let total = 0
+  {
+    const https = require('https')
+    total = await new Promise((resolve, reject) => {
+      const req = https.request({
+        host: ips[0], port: 443, servername: DL_HOST, path: urlPath, method: 'GET',
+        headers: { Host: DL_HOST, 'User-Agent': 'moyu-squad-update', Range: 'bytes=0-0' }, timeout: 15000
+      }, res => {
+        res.resume()
+        const cr = res.headers['content-range']
+        if (res.statusCode === 206 && cr) return resolve(Number(cr.split('/')[1]))
+        reject(new Error('源不支持 Range（HTTP ' + res.statusCode + '）'))
+      })
+      req.on('timeout', () => req.destroy(new Error('取大小超时')))
+      req.on('error', reject)
+      req.end()
+    })
+  }
+  if (!total) throw new Error('总大小未知')
+  fs.closeSync(fs.openSync(file, 'w'))  // 预创建/清空
+  const fd = fs.openSync(file, 'r+')
+  try {
+    const segSize = Math.ceil(total / SEGS)
+    const jobs = []
+    for (let i = 0; i < SEGS; i++) {
+      const start = i * segSize
+      const end = Math.min(total - 1, start + segSize - 1)
+      if (start > end) break
+      jobs.push({ start, end })
+    }
+    // 分片轮转分配到最快的几颗 IP 上
+    await Promise.all(jobs.map((j, i) =>
+      downloadSegment(ips[i % ips.length], urlPath, j.start, j.end, fd, file, 2)
+    ))
+    const size = fs.fstatSync(fd).size
+    if (Math.abs(size - total) > 1024) throw new Error(`大小校验失败 ${size}/${total}`)
+    return { ok: true, size, total }
+  } finally {
+    fs.closeSync(fd)
+  }
 }
 
 // ── 检查更新（GitHub Releases，无需 git / 无需代理） ──
