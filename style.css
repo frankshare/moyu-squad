@@ -434,21 +434,40 @@ select.fld option { background: var(--card); color: var(--text); }
   line-height: 1.55; font-size: 13px;
 }
 .chat-msg.self .cm-bubble {
-  background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-  border-color: transparent; color: var(--on-accent);
+  background: linear-gradient(180deg, var(--bubble-self-bg-a, var(--accent-hi)), var(--bubble-self-bg-b, var(--accent)));
+  border-color: transparent; color: var(--bubble-self-text, var(--on-accent));
   border-radius: 14px 4px 14px 14px;
   box-shadow: 0 4px 14px var(--acc-glow);
+}
+/* 白字主题加深色微投影保证可读；墨字主题（亮色）自动为 none */
+.chat-msg.self .cm-bubble .cm-text {
+  text-shadow: var(--bubble-self-tshadow, none);
 }
 .chat-msg.other .cm-bubble { border-left: 2px solid var(--cm-color, var(--line-strong)); }
 .chat-msg .cm-text { color: inherit; }
 
 /* ── 气泡样式变体（借鉴 QQ，保持克制） ── */
-/* ① 柔和圆角（默认） */
-body[data-bubble="soft"] .chat-msg .cm-bubble {
+/* ① 柔和圆角（默认）：主色渐变底 + 角落一点泡泡点缀 */body[data-bubble="soft"] .chat-msg .cm-bubble {
   border-radius: 4px 14px 14px 14px;
+  position: relative; overflow: hidden;
 }
 body[data-bubble="soft"] .chat-msg.self .cm-bubble {
   border-radius: 14px 4px 14px 14px;
+}
+/* 他人气泡：右下角一枚淡淡的名字色小圆（呼应聊天气球感） */
+body[data-bubble="soft"] .chat-msg.other .cm-bubble::after {
+  content: ''; position: absolute; right: 8px; bottom: 6px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--cm-color, var(--accent));
+  opacity: .3;
+}
+/* 自己气泡：左下角两枚上浮泡泡（白描边，像水下气泡） */
+body[data-bubble="soft"] .chat-msg.self .cm-bubble::after {
+  content: ''; position: absolute; left: 9px; bottom: 5px;
+  width: 6px; height: 6px; border-radius: 50%;
+  border: 1.2px solid currentColor;
+  opacity: .35;
+  box-shadow: 9px 6px 0 -2px currentColor;
 }
 
 /* ② QQ 尖角：靠近说话人一侧收成小尖角 */
@@ -463,29 +482,41 @@ body[data-bubble="point"] .chat-msg.other .cm-bubble::before {
   transform: rotate(45deg) skew(8deg, 8deg);
 }
 body[data-bubble="point"] .chat-msg.self .cm-bubble {
-  background: var(--accent);
+  background: var(--bubble-self-bg-b, var(--accent));
   border-color: transparent;
-  color: var(--on-accent);
+  color: var(--bubble-self-text, var(--on-accent));
 }
 body[data-bubble="point"] .chat-msg.self .cm-bubble::before {
   content: ''; position: absolute; right: -5px; bottom: 0;
-  width: 9px; height: 9px; background: var(--accent);
-  border-right: 1px solid var(--accent); border-bottom: 1px solid var(--accent);
+  width: 9px; height: 9px; background: var(--bubble-self-bg-b, var(--accent));
+  border-right: 1px solid var(--bubble-self-bg-b, var(--accent)); border-bottom: 1px solid var(--bubble-self-bg-b, var(--accent));
   transform: rotate(45deg) skew(8deg, 8deg);
 }
 body[data-bubble="point"] .chat-msg.self .cm-name { color: var(--accent); }
+/* 尖角变体：主色底上加同色系斜纹水波，低调不抢字 */
+body[data-bubble="point"] .chat-msg.self .cm-bubble {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255,255,255,.09) 0 6px,
+    transparent 6px 12px
+  );
+}
 
-/* ③ 描边：透明底 + 主色描边 */
+/* ③ 描边：透明底 + 主色描边（手绘双线感） */
 body[data-bubble="outline"] .chat-msg .cm-bubble {
   background: transparent;
   border: 1px solid var(--line-strong);
   border-left: 2px solid var(--cm-color, var(--line-strong));
   border-radius: 10px;
+  /* 描边变体：内部 2px 处再勾一圈虚线，像手账贴纸 */
+  box-shadow: inset 0 0 0 1px transparent, inset 0 0 0 3px color-mix(in srgb, var(--cm-color, var(--accent)) 12%, transparent);
 }
 body[data-bubble="outline"] .chat-msg.self .cm-bubble {
   background: transparent;
   border: 1px solid var(--accent);
+  border-left-width: 2px;
   color: var(--text);
+  box-shadow: inset 0 0 0 3px var(--accent-dim);
 }
 
 /* ④ 卡片：带阴影的浮层感 */
@@ -499,6 +530,28 @@ body[data-bubble="card"] .chat-msg.self .cm-bubble {
   background: var(--card);
   border: 1px solid var(--accent);
   box-shadow: 0 2px 14px rgba(0,0,0,.3);
+  color: var(--text);   /* 卡片底不是主色底，文字必须回正色，否则白底白字隐形 */
+}
+/* 卡片变体：左上角折角装饰 + 名字色顶边条 */
+body[data-bubble="card"] .chat-msg .cm-bubble {
+  position: relative; overflow: hidden;
+}
+body[data-bubble="card"] .chat-msg .cm-bubble::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2.5px;
+  background: linear-gradient(90deg, var(--cm-color, var(--accent)), transparent 70%);
+  opacity: .75;
+}
+body[data-bubble="card"] .chat-msg.self .cm-bubble::before {
+  background: linear-gradient(90deg, var(--accent), transparent 70%);
+}
+/* 卡片变体：右下角淡色鱼鳞纹理（克制的品牌点缀） */
+body[data-bubble="card"] .chat-msg .cm-bubble::after {
+  content: ''; position: absolute; right: -6px; bottom: -6px;
+  width: 44px; height: 30px; pointer-events: none;
+  background: radial-gradient(circle at 100% 100%, var(--cm-color, var(--accent)) 0 1.5px, transparent 1.6px) 0 0 / 10px 10px;
+  opacity: .13;
+  -webkit-mask-image: radial-gradient(circle at 100% 100%, #000 40%, transparent 72%);
+  mask-image: radial-gradient(circle at 100% 100%, #000 40%, transparent 72%);
 }
 
 /* 气泡样式选择器 */

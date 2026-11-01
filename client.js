@@ -49,7 +49,12 @@ const BASE_DARK = {
   '--kbd-bg': 'rgba(0, 0, 0, .28)',
   '--kbd-border': 'rgba(255, 255, 255, .14)',
   '--muted-btn-text': 'rgba(255, 255, 255, .55)',
-  '--modal-shadow': '0 1px 0 rgba(255,255,255,.05) inset, 0 18px 60px rgba(0,0,0,.55)'
+  '--modal-shadow': '0 1px 0 rgba(255,255,255,.05) inset, 0 18px 60px rgba(0,0,0,.55)',
+  /* self 气泡：暗色主题=主色渐变底 + 白字 + 深色微投影 */
+  '--bubble-self-bg-a': 'var(--accent-hi)',
+  '--bubble-self-bg-b': 'var(--accent)',
+  '--bubble-self-text': 'var(--on-accent)',
+  '--bubble-self-tshadow': '0 1px 2px rgba(0, 0, 0, .28)'
 }
 const BASE_LIGHT = {
   '--text': 'rgba(20, 26, 38, .92)',
@@ -69,7 +74,12 @@ const BASE_LIGHT = {
   '--kbd-bg': 'rgba(0, 0, 0, .06)',
   '--kbd-border': 'rgba(0, 0, 0, .12)',
   '--muted-btn-text': 'rgba(255, 255, 255, .78)',
-  '--modal-shadow': '0 1px 0 rgba(255,255,255,.8) inset, 0 18px 60px rgba(16,24,40,.18)'
+  '--modal-shadow': '0 1px 0 rgba(255,255,255,.8) inset, 0 18px 60px rgba(16,24,40,.18)',
+  /* self 气泡默认值（亮色基础）：会被各亮色主题的墨字方案覆盖 */
+  '--bubble-self-bg-a': 'var(--accent-hi)',
+  '--bubble-self-bg-b': 'var(--accent)',
+  '--bubble-self-text': 'var(--on-accent)',
+  '--bubble-self-tshadow': 'none'
 }
 const THEMES = [
   {
@@ -77,6 +87,9 @@ const THEMES = [
       '--bg': '#0b0e14', '--panel': '#11151d', '--card': '#171c26', '--card-2': '#1e2432', '--pop': '#262d3f',
       '--accent': '#4f8cff', '--accent-dim': 'rgba(79,140,255,.16)', '--accent-hi': '#78a7ff', '--accent-lo': '#2f66d9', '--on-accent': '#ffffff',
       '--acc-glow': 'rgba(79,140,255,.35)',
+      /* 白字配中明度主色对比度只有 1.7：self 气泡渐变整体压暗 */
+      '--bubble-self-bg-a': 'color-mix(in srgb, var(--accent) 82%, #000)',
+      '--bubble-self-bg-b': 'color-mix(in srgb, var(--accent-lo) 78%, #000)',
       '--sec-face-a': 'rgba(79,140,255,.16)', '--sec-face-b': 'rgba(79,140,255,.16)', '--sec-edge': 'rgba(79,140,255,.32)', '--sec-text': '#9dc0ff',
       '--bad': '#e5484d', '--warn': '#e8a33d', '--good': '#34d399'
     }
@@ -104,6 +117,8 @@ const THEMES = [
       '--bg': '#110d16', '--panel': '#161120', '--card': '#1c162a', '--card-2': '#241d37', '--pop': '#2f2749',
       '--accent': '#ff4d8d', '--accent-dim': 'rgba(255,77,141,.16)', '--accent-hi': '#ff7bb0', '--accent-lo': '#e02565', '--on-accent': '#ffffff',
       '--acc-glow': 'rgba(255,77,141,.35)',
+      '--bubble-self-bg-a': 'color-mix(in srgb, var(--accent) 82%, #000)',
+      '--bubble-self-bg-b': 'color-mix(in srgb, var(--accent-lo) 78%, #000)',
       '--sec-face-a': 'rgba(255,77,141,.16)', '--sec-face-b': 'rgba(255,77,141,.16)', '--sec-edge': 'rgba(255,77,141,.32)', '--sec-text': '#ff9cc0'
     }
   },
@@ -111,6 +126,8 @@ const THEMES = [
     id: 'mica', name: '云母白', dark: false, vars: {
       '--bg': '#eef1f6', '--panel': '#ffffff', '--card': '#ffffff', '--card-2': '#f2f4f8', '--pop': '#e8ecf2',
       '--accent': '#2f6bff', '--accent-dim': 'rgba(47,107,255,.12)', '--accent-hi': '#5c8cff', '--accent-lo': '#1d4fd7', '--on-accent': '#ffffff',
+      /* self 气泡专用：淡主色底 + 墨字（白字在亮色渐变上对比度只有 1.4~2.9，读不清） */
+      '--bubble-self-bg-a': 'rgba(47,107,255,.18)', '--bubble-self-bg-b': 'rgba(47,107,255,.10)', '--bubble-self-text': '#1b2559',
       '--acc-glow': 'rgba(47,107,255,.25)',
       '--sec-face-a': 'rgba(47,107,255,.10)', '--sec-face-b': 'rgba(47,107,255,.10)', '--sec-edge': 'rgba(47,107,255,.28)', '--sec-text': '#1d4fd7',
       '--bad': '#d93a3f'
@@ -120,6 +137,7 @@ const THEMES = [
     id: 'mocha', name: '摩卡慕斯', dark: false, vars: {
       '--bg': '#f5efe9', '--panel': '#fffdf9', '--card': '#fffdf9', '--card-2': '#f0e8df', '--pop': '#e6dcd0',
       '--accent': '#a47864', '--accent-dim': 'rgba(164,120,100,.15)', '--accent-hi': '#c29b85', '--accent-lo': '#825c4a', '--on-accent': '#ffffff',
+      '--bubble-self-bg-a': 'rgba(164,120,100,.20)', '--bubble-self-bg-b': 'rgba(164,120,100,.11)', '--bubble-self-text': '#3d2317',
       '--acc-glow': 'rgba(164,120,100,.28)',
       '--sec-face-a': 'rgba(164,120,100,.12)', '--sec-face-b': 'rgba(164,120,100,.12)', '--sec-edge': 'rgba(164,120,100,.30)', '--sec-text': '#825c4a'
     }
@@ -128,6 +146,7 @@ const THEMES = [
     id: 'morandi', name: '莫兰迪', dark: false, vars: {
       '--bg': '#f1f2f0', '--panel': '#fbfcfa', '--card': '#fbfcfa', '--card-2': '#eaede9', '--pop': '#dfe3dc',
       '--accent': '#7d9184', '--accent-dim': 'rgba(125,145,132,.15)', '--accent-hi': '#9ab0a1', '--accent-lo': '#5f7266', '--on-accent': '#ffffff',
+      '--bubble-self-bg-a': 'rgba(125,145,132,.22)', '--bubble-self-bg-b': 'rgba(125,145,132,.12)', '--bubble-self-text': '#222b25',
       '--acc-glow': 'rgba(125,145,132,.28)',
       '--sec-face-a': 'rgba(125,145,132,.12)', '--sec-face-b': 'rgba(125,145,132,.12)', '--sec-edge': 'rgba(125,145,132,.30)', '--sec-text': '#5f7266'
     }
@@ -136,6 +155,7 @@ const THEMES = [
     id: 'matcha', name: '抹茶', dark: false, vars: {
       '--bg': '#f2f5ea', '--panel': '#fbfdf4', '--card': '#fbfdf4', '--card-2': '#ecf2e2', '--pop': '#e0e9d2',
       '--accent': '#6f9e4f', '--accent-dim': 'rgba(111,158,79,.15)', '--accent-hi': '#93c274', '--accent-lo': '#55803a', '--on-accent': '#ffffff',
+      '--bubble-self-bg-a': 'rgba(111,158,79,.22)', '--bubble-self-bg-b': 'rgba(111,158,79,.12)', '--bubble-self-text': '#1d2e12',
       '--acc-glow': 'rgba(111,158,79,.28)',
       '--sec-face-a': 'rgba(111,158,79,.12)', '--sec-face-b': 'rgba(111,158,79,.12)', '--sec-edge': 'rgba(111,158,79,.30)', '--sec-text': '#55803a'
     }
