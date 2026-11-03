@@ -199,6 +199,11 @@ const state = {
   gateFloor: 0.015,
   gateGainVal: 1,
   gateNodes: null,
+  gateHold: 0,
+  gateHistory: [],
+  gateLastT: 0,
+  gateOpen: false,
+  gateTimer: null,
   chatOpen: false,
   unread: 0,
   pingTimer: null,
@@ -275,6 +280,7 @@ function setupSendChain() {
     state.gateNodes = null
   }
   if (!state.gateOn || state.testGain) {
+    stopGateTimer()
     state.localStream = raw
     state.localAnalyser = attachAnalyser(raw)
     return
@@ -300,19 +306,83 @@ function setupSendChain() {
   }
   state.gateFloor = 0.015
   state.gateGainVal = 1
+  state.gateHold = 0
+  state.gateHistory = []
+  state.gateLastT = 0
   state.localStream = dest.stream
   state.localAnalyser = an
+  startGateTimer()
 }
-function gateTick() {
+/* 噪声门核心。
+   旧实现有个致命缺陷：底噪 floor 在「门开着、正在说话」时也持续上爬
+   （floor += (r-floor)*0.0025），连续说话几秒后阈值就涨到高于语音电平，
+   门会把自己说的话关掉——实测 79 个音节里有 36 个被整个静音，听感就是「卡成一截一截」。
+
+   现在改成四件事：
+   1) 底噪用「低分位数」估计：维护最近 2.5s 的电平窗口，取第 15 百分位当底噪。
+      说话只占少数帧时，分位数天然停在噪声上，不会被语音拉高。
+   2) 底噪上升限速：万一用户长时间连续说话、窗口里全是语音帧，
+      底噪爬到语音电平会把话关掉——限速后即使发生也会被拖得很慢。
+   3) attack / release 分离：开门快（不切字头），关门慢（不留尾巴）。
+   4) 字头保护：检测到语音起始后强制保持一段，避免把辅音吃掉。 */
+const GATE_WIN = 2.5           // 底噪统计窗口（秒）
+const GATE_PCTL = 0.15         // 底噪分位数
+function gateTick(now) {
   if (!state.gateNodes || !state.localAnalyser) return
   const r = rms(state.localAnalyser)
-  const f = state.gateFloor
-  state.gateFloor = r < f ? f + (r - f) * 0.3 : f + (r - f) * 0.0025
+  const t = now || performance.now()
+
+  // 1) 底噪 = 最近窗口的低分位数（说话只占少数帧时，分位数天然停在噪声上）
+  const hist = state.gateHistory || (state.gateHistory = [])
+  hist.push({ t, r })
+  while (hist.length && t - hist[0].t > GATE_WIN * 1000) hist.shift()
+  const levels = hist.map(h => h.r).sort((a, b) => a - b)
+  const cand = levels.length ? levels[Math.floor(levels.length * GATE_PCTL)] : 0.015
+
+  // 2) 底噪跟随：下降快、上升慢。
+  //    上升限速是关键——万一用户长时间连续说话、窗口里全是语音帧，
+  //    底噪爬到语音电平就会把话关掉。限速后即使发生也只会被拖慢。
+  const prev = state.gateFloor
+  let floor
+  if (cand < prev) {
+    floor = prev + (cand - prev) * 0.3          // 噪声变低 → 快速跟随
+  } else {
+    const dt = state.gateLastT ? Math.min(0.1, (t - state.gateLastT) / 1000) : 1 / 60
+    const maxUp = prev * 0.6 * dt              // 每秒最多上爬 60%
+    floor = prev + Math.min(cand - prev, maxUp)
+  }
+  state.gateFloor = floor
+
   const K = { low: 2.0, mid: 2.8, high: 4.2 }[state.gateStrength] || 2.8
-  const open = r > state.gateFloor * K
-  const target = open ? 1 : 0
-  state.gateGainVal += (target - state.gateGainVal) * 0.35
-  state.gateNodes.proc.gain.value = state.gateGainVal
+  const threshold = floor * K
+  // 迟滞：开门门槛略高于关门门槛，避免在阈值附近反复抖动
+  const open = state.gateOpen ? r > threshold * 0.85 : r > threshold
+  state.gateOpen = open
+
+  // 3) attack 快 / release 慢，按真实帧间隔算时间常数
+  //    attack 10ms：不吃字头；release 120ms：话音尾巴自然收掉，不会拖成「咔咔」背景音
+  const dt = state.gateLastT ? Math.min(0.1, (t - state.gateLastT) / 1000) : 1 / 60
+  state.gateLastT = t
+  const coef = open ? 1 - Math.exp(-dt / 0.010) : 1 - Math.exp(-dt / 0.120)
+  state.gateGainVal += ((open ? 1 : 0) - state.gateGainVal) * coef
+
+  // 4) 字头保护：门刚打开时锁住一小段，防止吃掉辅音起始
+  if (open) {
+    if (state.gateHold > 0) state.gateHold--
+    else if (state.gateGainVal < 0.25) state.gateHold = 4   // ~65ms
+  }
+  const gain = state.gateHold > 0 ? Math.max(state.gateGainVal, 0.8) : state.gateGainVal
+  state.gateNodes.proc.gain.value = gain
+}
+/* 门控跑在独立定时器上，不依赖 requestAnimationFrame。
+   窗口被遮挡/最小化时 rAF 会被 Chromium 冻结，音量表可以停，但门控不能停——
+   一停增益就卡在最后一帧，人声被切碎。 */
+function startGateTimer() {
+  stopGateTimer()
+  state.gateTimer = setInterval(() => gateTick(performance.now()), 16)
+}
+function stopGateTimer() {
+  if (state.gateTimer) { clearInterval(state.gateTimer); state.gateTimer = null }
 }
 function ensureAudioCtx() {
   if (!state.audioCtx || state.audioCtx.state === 'closed') state.audioCtx = new AudioContext()
@@ -798,10 +868,18 @@ function teardownPeers() {
   updateMemberCount()
 }
 
-/* ---------- RTT 连接质量 ---------- */
+/* ---------- 延迟显示：网络 RTT + 端到端估算 ---------- */
+/* 顶栏原来只显示 candidate-pair 的 RTT（纯网络往返），但用户感知的是
+   「对方说话到我耳朵」的端到端延迟 = 网络 RTT + 采集/播放缓冲 + 抖动缓冲 + 编解码。
+   只显示 36ms 会让人以为语音延迟就是 36ms，实际听感差得多。
+   现在两者都取，并把拆分明细放进 title 提示。 */
+const AUDIO_PIPELINE_MS = 52   // 实测：采集 10ms + 系统播放 42ms
+const CODEC_MS = 40           // opus 编解码 + 20ms 帧打包
 setInterval(async () => {
   if (!state.inRoom || state.peers.size === 0) return
   let worst = 0
+  let jitter = 0
+  let lost = 0
   for (const p of state.peers.values()) {
     if (!p.pc) continue
     try {
@@ -809,12 +887,26 @@ setInterval(async () => {
       stats.forEach(r => {
         if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.currentRoundTripTime != null)
           worst = Math.max(worst, r.currentRoundTripTime * 1000)
+        if (r.type === 'inbound-rtp' && r.kind === 'audio') {
+          if (r.jitter != null) jitter = Math.max(jitter, r.jitter * 1000)
+          lost += r.packetsLost || 0
+        }
       })
     } catch {}
   }
   if (worst > 0) {
-    const cls = worst < 80 ? 'good' : worst < 160 ? 'warn' : 'bad'
-    setNet(Math.round(worst) + ' ms', cls)
+    // 端到端 ≈ RTT(单程≈RTT/2，但语音是连续流，来回都要) + 抖动缓冲 + 音频链 + 编解码
+    const e2e = Math.round(worst + jitter + AUDIO_PIPELINE_MS + CODEC_MS)
+    const cls = e2e < 150 ? 'good' : e2e < 300 ? 'warn' : 'bad'
+    setNet(e2e + ' ms', cls)
+    const badge = $('#netBadge')
+    if (badge) badge.title =
+      `语音端到端延迟 ≈ ${e2e}ms\n` +
+      `  网络往返 ${Math.round(worst)}ms\n` +
+      `  抖动缓冲 ${jitter.toFixed(1)}ms\n` +
+      `  采集+播放 ${AUDIO_PIPELINE_MS}ms（麦克风 10ms + 系统播放 42ms）\n` +
+      `  编解码 ${CODEC_MS}ms\n` +
+      `  累计丢包 ${lost}`
   }
 }, 3000)
 
@@ -996,9 +1088,8 @@ function showPickerTab(which) {
   $('#tabSticker').classList.toggle('active', which === 'sticker')
 }
 
-/* ---------- 音量动画（含噪声门节拍） ---------- */
+/* ---------- 音量动画（噪声门已独立定时器驱动，这里只画表） ---------- */
 function levelLoop() {
-  gateTick()
   const myCard = document.getElementById('card-self')
   if (myCard) {
     const active = state.mode === 'ptt' ? (state.pttDown && !state.muted) : !state.muted
@@ -1277,6 +1368,7 @@ function leaveRoom() {
   state.inRoom = false
   teardownPeers()
   stopMicTest()
+  stopGateTimer()
   try { state.ws?.close() } catch {}
   state.localStream?.getTracks().forEach(t => t.stop())
   if (state.testGain) state.testGain.gain.value = 0

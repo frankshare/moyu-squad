@@ -5,6 +5,16 @@ const { execFile } = require('child_process')
 let tray = null
 let quitting = false
 
+// 关键：语音链路不能因为窗口被遮挡/最小化到托盘而停摆。
+// Chromium 默认会把被遮挡窗口的 requestAnimationFrame 完全冻结（实测 0 帧），
+// setInterval 也会被节流到约 1.3 次/秒。而噪声门正是 rAF 驱动的——
+// 一旦冻结，门控增益停在最后一帧，人声会被切成一截一截（听感即「很卡」）。
+// 摸鱼的核心场景就是「窗口切到游戏/浏览器后面」，所以必须显式关掉节流。
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
 // 主进程代取 /ice 打洞配置（渲染进程跨域受限）
 ipcMain.handle('get-ice-config', async (e, serverUrl) => {
   try {
@@ -39,7 +49,13 @@ function createWindow() {
     backgroundColor: '#0e1013',
     title: '摸鱼小队',
     autoHideMenuBar: true,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.js') }
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js'),
+      // 窗口隐藏/遮挡时不要节流渲染进程：噪声门与音量表依赖 rAF
+      backgroundThrottling: false
+    }
   })
   const query = {}
   const room = arg('room'), name = arg('name')
