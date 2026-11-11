@@ -1,6 +1,13 @@
 // 摸鱼小队客户端：WebRTC P2P mesh 语音 + WebSocket 信令
 'use strict'
 const $ = s => document.querySelector(s)
+/* 音频相关控件在「麦克风旁弹层」和「设置弹窗」里各有一份（相同 id）。
+   document.querySelector 只会拿到第一份 —— 以前设置弹窗里的音频开关全是摆设。
+   下面这组 helper 会同时操作两份，保证哪边改都生效。 */
+const $all = id => [...document.querySelectorAll('#' + id)]
+function bindAll(id, ev, fn) { $all(id).forEach(el => el.addEventListener(ev, fn)) }
+function setAll(id, prop, val) { $all(id).forEach(el => { try { el[prop] = val } catch {} }) }
+function textAll(id, text) { $all(id).forEach(el => { el.textContent = text }) }
 
 // Cloudflare Worker 信令默认节点（免费档，永久在线）；部署地址变了就改这里
 const DEFAULT_WSS = 'wss://moyu.summersol.dpdns.org'
@@ -453,24 +460,30 @@ async function refreshDevices() {
     const list = await navigator.mediaDevices.enumerateDevices()
     state.devices.mics = list.filter(d => d.kind === 'audioinput')
     state.devices.spks = list.filter(d => d.kind === 'audiooutput')
-    const micSel = $('#micSel'), spkSel = $('#spkSel')
-    micSel.innerHTML = ''
-    state.devices.mics.forEach((d, i) => {
-      const o = document.createElement('option')
-      o.value = d.deviceId
-      o.textContent = d.label || ('麦克风 ' + (i + 1))
-      if (d.deviceId === state.micDeviceId) o.selected = true
-      micSel.appendChild(o)
-    })
-    spkSel.innerHTML = ''
-    state.devices.spks.forEach((d, i) => {
-      const o = document.createElement('option')
-      o.value = d.deviceId
-      o.textContent = d.label || ('扬声器 ' + (i + 1))
-      if (d.deviceId === state.spkDeviceId) o.selected = true
-      spkSel.appendChild(o)
-    })
+    const fill = (id, devices, cur, fallbackName) => {
+      $all(id).forEach(sel => {
+        sel.innerHTML = ''
+        devices.forEach((d, i) => {
+          const o = document.createElement('option')
+          o.value = d.deviceId
+          o.textContent = d.label || (fallbackName + ' ' + (i + 1))
+          if (d.deviceId === cur) o.selected = true
+          sel.appendChild(o)
+        })
+      })
+    }
+    fill('micSel', state.devices.mics, state.micDeviceId, '麦克风')
+    fill('spkSel', state.devices.spks, state.spkDeviceId, '扬声器')
   } catch (e) { log('枚举设备失败', e) }
+}
+/* 把音频轨道替换到所有音频 sender 上。
+   注意：不能用 sender.kind 判断——这版 Chromium（Electron 45）里它是 undefined，
+   旧代码的 sender.kind === 'audio' 永远不成立，导致房间内换麦/改音频参数后
+   新轨道根本没推给对方（对方一直听到旧麦）。改用 sender.track.kind。 */
+function replaceAudioSender(pc, newTrack) {
+  for (const sender of pc.getSenders()) {
+    if (sender.track && sender.track.kind === 'audio') sender.replaceTrack(newTrack).catch(() => {})
+  }
 }
 async function switchMic(deviceId) {
   state.micDeviceId = deviceId
@@ -486,18 +499,15 @@ async function switchMic(deviceId) {
         state.localStream = s
         setupSendChain()
         const newTrack = state.localStream.getAudioTracks()[0]
-        state.peers.forEach(p => {
-          p.pc.getSenders().forEach(sender => { if (sender.kind === 'audio' && sender.track) sender.replaceTrack(newTrack).catch(() => {}) })
-        })
+        state.peers.forEach(p => replaceAudioSender(p.pc, newTrack))
         try { oldProcessed.stop() } catch {}
       } else {
         const newTrack = s.getAudioTracks()[0]
-        state.peers.forEach(p => {
-          p.pc.getSenders().forEach(sender => { if (sender.kind === 'audio' && sender.track) sender.replaceTrack(newTrack).catch(() => {}) })
-        })
+        state.peers.forEach(p => replaceAudioSender(p.pc, newTrack))
         state.localStream.removeTrack(old)
         try { old.stop() } catch {}
         state.localStream.addTrack(newTrack)
+        state.rawStream = s   // 耳返监视器读的是 rawStream，换麦后要跟着换，否则监视到的是旧麦
         state.localAnalyser = attachAnalyser(state.localStream)
       }
       applyMuteState()
@@ -522,9 +532,9 @@ function startMicTest() {
   stopMicTest()
   const begin = (stream, own) => {
     micTest = { stream: own ? stream : null, own, an: own ? attachAnalyser(stream) : state.localAnalyser, raf: 0, audio: null }
-    $('#micTestBtn').textContent = '停止测试'
-    $('#micTestMeter').classList.remove('hidden')
-    if ($('#monitorToggle').checked) {
+    textAll('micTestBtn', '停止测试')
+    $all('micTestMeter').forEach(el => el.classList.remove('hidden'))
+    if ($all('monitorToggle').some(el => el.checked)) {
       const src = own ? stream : state.rawStream
       if (src) {
         const a = new Audio()
@@ -536,7 +546,8 @@ function startMicTest() {
     }
     const loop = () => {
       if (!micTest) return
-      $('#micTestMeter').querySelector('i').style.width = Math.min(100, rms(micTest.an) * 260) + '%'
+      const w = Math.min(100, rms(micTest.an) * 260) + '%'
+      $all('micTestMeter').forEach(el => { el.querySelector('i').style.width = w })
       micTest.raf = requestAnimationFrame(loop)
     }
     loop()
@@ -555,9 +566,9 @@ function stopMicTest() {
   if (micTest.own) micTest.stream.getTracks().forEach(t => t.stop())
   if (micTest.audio) { try { micTest.audio.pause(); micTest.audio.srcObject = null } catch {} micTest.audio = null }
   micTest = null
-  $('#micTestBtn').textContent = '开始测试'
-  $('#micTestMeter').querySelector('i').style.width = '0%'
-  $('#micTestMeter').classList.add('hidden')
+  textAll('micTestBtn', '开始测试')
+  $all('micTestMeter').forEach(el => { el.querySelector('i').style.width = '0%' })
+  $all('micTestMeter').forEach(el => el.classList.add('hidden'))
 }
 
 /* ---------- 房间 UI ---------- */
@@ -831,6 +842,21 @@ function createPC(id, name, initiator, muted) {
       if (state.spkDeviceId !== 'default' && p.audio.setSinkId) p.audio.setSinkId(state.spkDeviceId).catch(() => {})
       p.audio.play().catch(err => log('播放失败', err))
       p.analyser = attachAnalyser(p.stream)
+      // 低延迟：把接收端抖动缓冲钉在 20ms。
+      // 不设的话 Chromium 会随网络抖动自适应放大（实测回环 31ms，公网抖动下 60ms+）。
+      tuneJitterBuffer(pc)
+    }
+  }
+  /* 抖动缓冲：jitterBufferTarget（标准）→ playoutDelayHint（Chromium 旧名）。
+     单位不同：前者毫秒、后者秒。设了它 NetEq 的缓冲就钉在这个值附近，
+     不再随抖动一路放大 —— 这是「对方声音迟一拍」的最大一块本地开销。 */
+  function tuneJitterBuffer(targetPc) {
+    for (const recv of targetPc.getReceivers()) {
+      if (!recv.track || recv.track.kind !== 'audio') continue
+      try {
+        if ('jitterBufferTarget' in recv) recv.jitterBufferTarget = 20
+        else if ('playoutDelayHint' in recv) recv.playoutDelayHint = 0.02
+      } catch {}
     }
   }
   pc.onicecandidate = e => {
@@ -1148,19 +1174,23 @@ function renderRecent() {
 }
 
 /* ---------- 设置面板 ---------- */
+/* 音频控件在弹层和设置弹窗里各一份，这里统一同步两份 */
+function syncAudioUI() {
+  setAll('masterVol', 'value', Math.round(state.masterVol * 100))
+  textAll('masterVolVal', Math.round(state.masterVol * 100) + '%')
+  setAll('nsToggle', 'checked', state.ns)
+  setAll('aecToggle', 'checked', state.aec)
+  setAll('agcToggle', 'checked', state.agc)
+  setAll('gateToggle', 'checked', state.gateOn)
+  setAll('hpToggle', 'checked', state.hpOn)
+  setAll('gateStrengthSel', 'value', state.gateStrength)
+}
 function openSettings() {
   refreshDevices()
   renderThemeGrid()
   renderBubbleGrid()
   setupUpdateUI()
-  $('#masterVol').value = Math.round(state.masterVol * 100)
-  $('#masterVolVal').textContent = Math.round(state.masterVol * 100) + '%'
-  $('#nsToggle').checked = state.ns
-  $('#aecToggle').checked = state.aec
-  $('#agcToggle').checked = state.agc
-  $('#gateToggle').checked = state.gateOn
-  $('#hpToggle').checked = state.hpOn
-  $('#gateStrengthSel').value = state.gateStrength
+  syncAudioUI()
   $('#settingsModal').classList.remove('hidden')
 }
 function closeSettings() {
@@ -1455,24 +1485,39 @@ $('#chatLog').addEventListener('dragleave', () => $('#chatLog').classList.remove
 $('#chatLog').addEventListener('drop', e => { e.preventDefault(); $('#chatLog').classList.remove('dragover'); [...e.dataTransfer.files].forEach(sendImageFile) })
 $('#chatInput').addEventListener('paste', e => { [...(e.clipboardData?.files || [])].forEach(sendImageFile) })
 
-$('#gateToggle').addEventListener('change', e => {
+/* 一键低延迟：关掉全部本地音频处理。
+   适用场景：戴耳机开黑（不需要回声消除），追求最低延迟。
+   外放用户不要用 —— 没了回声消除对方会听到自己的回声。 */
+function applyLowLatencyPreset() {
+  state.aec = false; state.ns = false; state.agc = false
+  state.gateOn = false; state.hpOn = false
+  localStorage.setItem('moyu.aec', '0'); localStorage.setItem('moyu.ns', '0')
+  localStorage.setItem('moyu.agc', '0'); localStorage.setItem('moyu.gate', '0')
+  localStorage.setItem('moyu.hp', '0')
+  syncAudioUI()
+  if (state.inRoom && state.localStream) switchMic(state.micDeviceId)
+  setStatus('低延迟模式：已关闭回声消除/降噪/自动增益/噪声门（戴耳机时推荐）', 'good')
+}
+bindAll('lowLatencyBtn', 'click', applyLowLatencyPreset)
+
+bindAll('gateToggle', 'change', e => {
   state.gateOn = e.target.checked
   localStorage.setItem('moyu.gate', state.gateOn ? '1' : '0')
   if (state.inRoom && state.localStream) setupSendChain()
 })
-$('#gateStrengthSel').addEventListener('change', e => {
+bindAll('gateStrengthSel', 'change', e => {
   state.gateStrength = e.target.value
   localStorage.setItem('moyu.gk', state.gateStrength)
 })
-$('#hpToggle').addEventListener('change', e => {
+bindAll('hpToggle', 'change', e => {
   state.hpOn = e.target.checked
   localStorage.setItem('moyu.hp', state.hpOn ? '1' : '0')
   if (state.inRoom && state.localStream) setupSendChain()
 })
-$('#masterVol').addEventListener('input', e => {
+bindAll('masterVol', 'input', e => {
   state.masterVol = e.target.value / 100
   localStorage.setItem('moyu.mvol', e.target.value)
-  $('#masterVolVal').textContent = e.target.value + '%'
+  textAll('masterVolVal', e.target.value + '%')
   applyVolumes()
 })
 
@@ -1484,8 +1529,8 @@ $('#settingsModal').addEventListener('click', e => { if (e.target === $('#settin
 $('#updateBtn').addEventListener('click', doUpdate)
 $('#checkBtn').addEventListener('click', doCheckUpdate)
 
-$('#micTestBtn').addEventListener('click', toggleMicTest)
-$('#monitorToggle').addEventListener('change', e => {
+bindAll('micTestBtn', 'click', toggleMicTest)
+bindAll('monitorToggle', 'change', e => {
   if (!micTest) return
   if (e.target.checked && !micTest.audio) {
     const src = micTest.own ? micTest.stream : state.rawStream
@@ -1501,12 +1546,12 @@ $('#monitorToggle').addEventListener('change', e => {
     micTest.audio = null
   }
 })
-$('#nsToggle').addEventListener('change', e => { state.ns = e.target.checked; localStorage.setItem('moyu.ns', state.ns ? '1' : '0'); if (state.inRoom) switchMic(state.micDeviceId) })
-$('#aecToggle').addEventListener('change', e => { state.aec = e.target.checked; localStorage.setItem('moyu.aec', state.aec ? '1' : '0'); if (state.inRoom) switchMic(state.micDeviceId) })
-$('#agcToggle').addEventListener('change', e => { state.agc = e.target.checked; localStorage.setItem('moyu.agc', state.agc ? '1' : '0'); if (state.inRoom) switchMic(state.micDeviceId) })
+bindAll('nsToggle', 'change', e => { state.ns = e.target.checked; localStorage.setItem('moyu.ns', state.ns ? '1' : '0'); if (state.inRoom) switchMic(state.micDeviceId) })
+bindAll('aecToggle', 'change', e => { state.aec = e.target.checked; localStorage.setItem('moyu.aec', state.aec ? '1' : '0'); if (state.inRoom) switchMic(state.micDeviceId) })
+bindAll('agcToggle', 'change', e => { state.agc = e.target.checked; localStorage.setItem('moyu.agc', state.agc ? '1' : '0'); if (state.inRoom) switchMic(state.micDeviceId) })
 
-$('#micSel').addEventListener('change', e => switchMic(e.target.value))
-$('#spkSel').addEventListener('change', e => switchSpeaker(e.target.value))
+bindAll('micSel', 'change', e => switchMic(e.target.value))
+bindAll('spkSel', 'change', e => switchSpeaker(e.target.value))
 
 $('#server').value = defaultServer()
 $('#name').value = localStorage.getItem('moyu.name') || ''
