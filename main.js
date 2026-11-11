@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, Tray, Menu, nativeImage, ipcMain } = require('electron')
+const { app, BrowserWindow, session, Tray, Menu, nativeImage, ipcMain, net } = require('electron')
 const path = require('path')
 const { execFile } = require('child_process')
 
@@ -156,116 +156,72 @@ async function electron_download(url) {
     const dir = path.join(app.getPath('temp'), 'moyu-update')
     fs.mkdirSync(dir, { recursive: true })
     const file = path.join(dir, name)
-    // ① 多连接分片（仅代理线路——直连 GitHub 的 CDN 连 TLS 都过不了，分片无意义）
-    if (cand !== url) {
-      try {
-        const r = await parallelDownload(cand, file)
-        if (r && r.ok) return { ok: true, path: file, size: r.size, total: r.total }
-      } catch (err) {
-        lastErr = '分片下载失败：' + (err.message || err)
-        try { fs.unlinkSync(file) } catch {}
-      }
-    }
-    // ② 单流兜底（直连线路 / 分片不支持的源）
+    // ① 多连接分片（Chromium 栈，代理/直连线路都可用）
     try {
-      const r = await fetch(cand, { redirect: 'follow', signal: AbortSignal.timeout(20 * 60 * 1000) })
-      if (!r.ok) { lastErr = '下载失败 HTTP ' + r.status + (cand !== url ? '（代理线路）' : '（直连线路）'); continue }
-      const total = Number(r.headers.get('content-length') || 0)
-      const ws = fs.createWriteStream(file)
-      let got = 0
-      const reader = r.body.getReader()
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        got += value.length
-        if (!ws.write(Buffer.from(value))) await new Promise(res => ws.once('drain', res))
-      }
-      await new Promise(res => ws.end(res))
-      // 完整性校验：GitHub 声明了大小但拿到的字节数明显不符 → 换线路重试
-      if (total && got && Math.abs(got - total) > 1024) {
-        ws.close(); try { fs.unlinkSync(file) } catch {}
-        lastErr = '下载不完整（' + got + '/' + total + '）'
-        continue
-      }
-      return { ok: true, path: file, size: got, total }
+      const r = await parallelDownload(cand, file)
+      if (r && r.ok) return { ok: true, path: file, size: r.size, total: r.total }
     } catch (err) {
-      lastErr = (err && err.name === 'TimeoutError') ? '下载超时' : (err.message || String(err))
+      lastErr = '分片下载失败：' + (err.message || err) + (cand !== url ? '（代理线路）' : '（直连线路）')
+      try { fs.unlinkSync(file) } catch {}
+    }
+    // ② 单流兜底（同一 Chromium 栈，走系统代理）
+    try {
+      const r = await netSingleDownload(cand, file)
+      return { ok: true, path: file, size: r.size, total: r.total }
+    } catch (err) {
+      lastErr = (err && err.message || String(err)) + (cand !== url ? '（代理线路）' : '（直连线路）')
+      try { fs.unlinkSync(file) } catch {}
     }
   }
   return { ok: false, msg: lastErr }
 }
 
-/* ─────────── 多连接分片下载器 ───────────
-   国内到 Cloudflare 边缘的单 TCP 连接被限速在 ~0.1MB/s（实测 12 个 IP 一致），
-   出口按连接数限速 → 用 N 条 Range 分片并行，吞吐近似 ×N。
-   边缘 IP 在本机也可能时好时坏（有的 IP TLS 直接超时），所以先并发探测选最快的几颗。 */
-const DL_HOST = 'moyu.summersol.dpdns.org'
-const CF_IP_POOL = [
-  '104.18.32.7', '172.64.80.10', '104.20.32.48', '104.17.32.10', '188.114.96.3',
-  '104.21.27.22', '172.67.140.236', '162.159.135.42', '104.19.195.21', '104.16.132.229'
-]
+/* ─────────── 多连接分片下载器 v2（Chromium 网络栈） ───────────
+   旧版用 node:https 钉 Cloudflare IP 分片。2026-11-12 实测这条链路在本机 ISP 全灭：
+   node 的 TLS 到 CF 边缘 100% ECONNRESET（浏览器/curl 正常，ClientHello 指纹被掐），
+   分片全灭后回落 undici fetch 单流 → 同样 reset → 最后掉到直连 GitHub 0.12MB/s。
+   改用 Electron net（Chromium/BoringSSL，与应用内页面同一栈）：
+   - 指纹不会被 reset，且自动走系统代理（用户开 Clash 时直接吃代理带宽）
+   - 每个分片独立 session（独立连接池）：h2 多路复用会把 8 个请求挤在一条 TCP 上，
+     单连接限速会把 8 分片并成 1 分片，所以必须拆 session
+   实测：单流 4.8MB/s，4 session 并行 15.1MB/s */
 
-// 用 node:https 手动指定连接 IP：host=IP、servername=域名（SNI/证书校验都按域名走）
-function httpsProbe(ip, path, timeoutMs) {
-  const https = require('https')
+// 取总大小：Range 0-0 → 206 + content-range
+function netFileSize(url) {
   return new Promise((resolve, reject) => {
-    const req = https.request({
-      host: ip, port: 443, servername: DL_HOST, path,
-      method: 'GET',
-      headers: { Host: DL_HOST, 'User-Agent': 'moyu-squad-edge-probe', 'Accept-Encoding': 'identity' },
-      timeout: timeoutMs
-    }, res => {
+    const req = net.request({ url, headers: { Range: 'bytes=0-0' } })
+    req.on('response', res => {
       res.resume()
-      let bytes = 0
-      const t0 = Date.now()
-      res.on('data', c => { bytes += c.length })
-      res.on('end', () => resolve({ ip, bytes, ms: Date.now() - t0 }))
+      const cr = res.headers['content-range']
+      if (res.statusCode === 206 && cr) return resolve(Number(cr.split('/')[1]))
+      reject(new Error('源不支持 Range（HTTP ' + res.statusCode + '）'))
     })
-    req.on('timeout', () => { req.destroy(new Error('probe timeout')) })
     req.on('error', reject)
     req.end()
   })
 }
 
-// 并发探测 IP 池，按「探测期吞吐」排序取前 n 个（探测下载 128KB，2 个并行批次足够）
-async function pickFastIPs(n) {
-  const { dns } = require('dns').promises ? require('dns').promises : require('dns')
-  const ips = [...CF_IP_POOL]
-  try {
-    const a = await require('dns').promises.resolve4(DL_HOST)
-    for (const ip of a) if (!ips.includes(ip)) ips.unshift(ip)   // 官方解析的优先测
-  } catch {}
-  const results = await Promise.allSettled(ips.map(ip => httpsProbe(ip, '/speedtest', 6000)))
-  const ok = results.filter(r => r.status === 'fulfilled' && r.value.bytes > 65536)
-    .map(r => ({ ip: r.value.ip, speed: r.value.bytes / Math.max(1, r.value.ms) }))
-    .sort((a, b) => b.speed - a.speed)
-  return ok.slice(0, n).map(r => r.ip)
-}
-
-// 单分片：Range 请求 + 按偏移写文件，自带 1 次重试
-async function downloadSegment(ip, urlPath, start, end, fd, file, attempts) {
+// 单分片：独立 session + Range + 按偏移写文件，自带重试
+async function netDownloadShard(url, sesName, start, end, fd, attempts) {
   const fs = require('fs')
-  const https = require('https')
   for (let i = 0; i < attempts; i++) {
     try {
       return await new Promise((resolve, reject) => {
-        const req = https.request({
-          host: ip, port: 443, servername: DL_HOST, path: urlPath,
-          method: 'GET',
-          headers: { Host: DL_HOST, 'User-Agent': 'moyu-squad-update', 'Accept-Encoding': 'identity', Range: `bytes=${start}-${end}` },
-          timeout: 120000
-        }, res => {
-          if (res.statusCode !== 206 && res.statusCode !== 200) { res.resume(); return reject(new Error('分片 HTTP ' + res.statusCode)) }
-          let pos = start
-          res.on('data', c => {
-            const buf = Buffer.from(c)
-            fs.writeSync(fd, buf, 0, buf.length, pos)
-            pos += buf.length
-          })
-          res.on('end', () => pos >= end + 1 ? resolve(pos - start) : reject(new Error(`分片不完整 ${pos - start}/${end - start + 1}`)))
+        let pos = start
+        const req = net.request({
+          url,
+          session: require('electron').session.fromPartition(sesName),
+          headers: { Range: 'bytes=' + start + '-' + end }
         })
-        req.on('timeout', () => req.destroy(new Error('分片超时')))
-        req.on('error', reject)
+        // Electron 的 ClientRequest 没有 node 式的 setTimeout，手动挂死线
+        const timer = setTimeout(() => { try { req.abort() } catch {}; reject(new Error('分片超时')) }, 180 * 1000)
+        req.on('response', res => {
+          if (res.statusCode !== 206 && res.statusCode !== 200) { res.resume(); clearTimeout(timer); return reject(new Error('分片 HTTP ' + res.statusCode)) }
+          res.on('data', c => { fs.writeSync(fd, c, 0, c.length, pos); pos += c.length })
+          res.on('end', () => { clearTimeout(timer); pos >= end + 1 ? resolve(pos - start) : reject(new Error('分片不完整 ' + (pos - start) + '/' + (end - start + 1))) })
+          res.on('error', e => { clearTimeout(timer); reject(e) })
+        })
+        req.on('error', e => { clearTimeout(timer); reject(e) })
         req.end()
       })
     } catch (err) {
@@ -275,55 +231,68 @@ async function downloadSegment(ip, urlPath, start, end, fd, file, attempts) {
   }
 }
 
-// 主流程：探测 IP → 取总大小 → 8 分片并行 → 校验
+// 主流程：8 分片并行（每片独立 session）→ 大小校验
 async function parallelDownload(proxyUrl, file) {
   const fs = require('fs')
-  const SEGS = 8
-  const ips = await pickFastIPs(Math.min(6, SEGS))
-  if (!ips.length) throw new Error('无可用边缘节点')
-  const urlObj = new URL(proxyUrl)
-  const urlPath = urlObj.pathname + urlObj.search
-  // 总大小：Range 0-0 拿 content-range（206 响应）
-  let total = 0
-  {
-    const https = require('https')
-    total = await new Promise((resolve, reject) => {
-      const req = https.request({
-        host: ips[0], port: 443, servername: DL_HOST, path: urlPath, method: 'GET',
-        headers: { Host: DL_HOST, 'User-Agent': 'moyu-squad-update', Range: 'bytes=0-0' }, timeout: 15000
-      }, res => {
-        res.resume()
-        const cr = res.headers['content-range']
-        if (res.statusCode === 206 && cr) return resolve(Number(cr.split('/')[1]))
-        reject(new Error('源不支持 Range（HTTP ' + res.statusCode + '）'))
-      })
-      req.on('timeout', () => req.destroy(new Error('取大小超时')))
-      req.on('error', reject)
-      req.end()
-    })
-  }
+  const total = await netFileSize(proxyUrl)
   if (!total) throw new Error('总大小未知')
   fs.closeSync(fs.openSync(file, 'w'))  // 预创建/清空
   const fd = fs.openSync(file, 'r+')
   try {
-    const segSize = Math.ceil(total / SEGS)
+    const segSize = Math.ceil(total / DL_SEGS)
     const jobs = []
-    for (let i = 0; i < SEGS; i++) {
+    for (let i = 0; i < DL_SEGS; i++) {
       const start = i * segSize
       const end = Math.min(total - 1, start + segSize - 1)
       if (start > end) break
-      jobs.push({ start, end })
+      jobs.push({ start, end, ses: 'dlshard' + i })
     }
-    // 分片轮转分配到最快的几颗 IP 上
-    await Promise.all(jobs.map((j, i) =>
-      downloadSegment(ips[i % ips.length], urlPath, j.start, j.end, fd, file, 2)
-    ))
+    await Promise.all(jobs.map(j => netDownloadShard(proxyUrl, j.ses, j.start, j.end, fd, 2)))
     const size = fs.fstatSync(fd).size
-    if (Math.abs(size - total) > 1024) throw new Error(`大小校验失败 ${size}/${total}`)
+    if (Math.abs(size - total) > 1024) throw new Error('大小校验失败 ' + size + '/' + total)
     return { ok: true, size, total }
   } finally {
     fs.closeSync(fd)
   }
+}
+
+// 单流兜底：Chromium 栈 + 默认 session（走系统代理）
+function netSingleDownload(url, file) {
+  const fs = require('fs')
+  return new Promise((resolve, reject) => {
+    let total = 0, got = 0, done = false
+    const ws = fs.createWriteStream(file)
+    const finish = (err, size) => {
+      if (done) return
+      done = true
+      if (timer) clearTimeout(timer)
+      try { req.abort() } catch {}
+      try { ws.end() } catch {}
+      if (err) { try { fs.unlinkSync(file) } catch {}; reject(err) }
+      else resolve(size)
+    }
+    ws.on('error', e => finish(e))
+    let timer = null
+    const req = net.request({ url, redirect: 'follow' })
+    timer = setTimeout(() => finish(new Error('下载超时')), 180 * 1000)
+    req.on('response', res => {
+      if (res.statusCode !== 200 && res.statusCode !== 206) return finish(new Error('下载失败 HTTP ' + res.statusCode))
+      total = Number(res.headers['content-length'] || 0)
+      res.on('data', c => {
+        got += c.length
+        if (!ws.write(c)) { res.pause(); ws.once('drain', () => res.resume()) }
+      })
+      res.on('end', () => {
+        ws.end(() => {
+          if (total && Math.abs(got - total) > 1024) return finish(new Error('下载不完整（' + got + '/' + total + '）'))
+          finish(null, { size: got, total })
+        })
+      })
+      res.on('error', e => finish(e))
+    })
+    req.on('error', e => finish(e))
+    req.end()
+  })
 }
 
 // ── 检查更新（GitHub Releases，无需 git / 无需代理） ──
