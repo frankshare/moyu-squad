@@ -364,15 +364,24 @@ function detectRepoDir() {
 ipcMain.handle('app-env', () => ({ isRepo: !!detectRepoDir() }))
 
 ipcMain.handle('app-check-update', async () => {
-  try {
-    const r = await fetch(RELEASES_API, {
+  // GitHub 对未认证 API 限 60 次/小时且按出口 IP 计 —— 用户开系统代理时，
+  // 代理出口 IP 是多人共享的，很容易 403。所以直连失败就回落到自家 Worker 代理。
+  const tryFetch = async url => {
+    const r = await fetch(url, {
       headers: { 'User-Agent': 'moyu-squad', 'Accept': 'application/vnd.github+json' },
       signal: AbortSignal.timeout(15000)
     })
-    if (!r.ok) {
-      return { ok: false, msg: '查询失败 HTTP ' + r.status + '（GitHub API 限流，稍后再试）' }
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    return r.json()
+  }
+  try {
+    let rel, via = 'GitHub 直连'
+    try {
+      rel = await tryFetch(RELEASES_API)
+    } catch (e) {
+      rel = await tryFetch(DOWNLOAD_PROXY + encodeURIComponent(RELEASES_API))
+      via = 'Worker 代理'
     }
-    const rel = await r.json()
     const latest = String(rel.tag_name || '').replace(/^v/, '')
     const cur = app.getVersion()
     const cmp = (a, b) => {
@@ -388,7 +397,8 @@ ipcMain.handle('app-check-update', async () => {
       url: asset ? asset.browser_download_url : RELEASES_PAGE,
       size: asset ? asset.size : 0,
       notes: (rel.body || '').trim().slice(0, 800),
-      pageUrl: rel.html_url || RELEASES_PAGE
+      pageUrl: rel.html_url || RELEASES_PAGE,
+      via
     }
   } catch (e) {
     return { ok: false, msg: '查询失败：' + (e.message || e) }

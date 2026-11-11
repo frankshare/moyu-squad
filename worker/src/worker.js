@@ -166,12 +166,20 @@ export default {
         try { t = new URL(target) } catch { return json404('bad url') }
         const hostOk = t.hostname === 'github.com' || t.hostname === 'api.github.com' ||
           t.hostname.endsWith('.githubusercontent.com') || t.hostname === 'codeload.github.com'
-        const repoOk = t.pathname.startsWith('/frankshare/moyu-squad')
+        // 下载路径 /<owner>/<repo>/releases/...，API 路径 /repos/<owner>/<repo>/...
+        const repoOk = t.pathname.startsWith('/frankshare/moyu-squad') ||
+          t.pathname.startsWith('/repos/frankshare/moyu-squad')
         if (!hostOk || !repoOk) return json404('blocked')
         // Range 透传：客户端分段并行下载依赖 206 + Content-Range
         const upHeaders = { 'User-Agent': 'moyu-squad-update-proxy' }
         const range = req.headers.get('range')
         if (range) upHeaders['Range'] = range
+        // API 请求带 Accept；配置了 GH_TOKEN secret 就带上 —— GitHub 对未认证请求
+        // 限 60 次/小时且按出口 IP 计，Workers/家宽代理的共享出口 IP 很容易耗尽
+        if (t.hostname === 'api.github.com') {
+          upHeaders['Accept'] = 'application/vnd.github+json'
+          if (env.GH_TOKEN) upHeaders['Authorization'] = 'Bearer ' + env.GH_TOKEN
+        }
         const upstream = await fetch(t.href, {
           redirect: 'follow',
           headers: upHeaders,
