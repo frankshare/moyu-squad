@@ -774,9 +774,17 @@ a { color: var(--accent); }
 .tc-preview .tc-dot { position: absolute; bottom: 9px; right: 12px; width: 13px; height: 13px; border-radius: 50%; }
 .tc-name { font-size: 13px; font-weight: 700; color: var(--text); text-align: center; letter-spacing: 1px; }
 
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
+/* 标准滚动条（Chrome 121+ / Firefox 64+；thin≈8px，thumb 圆角由浏览器内置） */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+/* 旧 WebKit 回退：仅在浏览器不支持标准属性时生效，避免双滚动条模型冲突 */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

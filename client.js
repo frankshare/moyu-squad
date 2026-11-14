@@ -1433,8 +1433,8 @@ document.addEventListener('keyup', e => {
 
 /* ---------- 事件绑定 ---------- */
 $('#joinBtn').addEventListener('click', joinRoom)
-$('#roomCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom() })
-$('#name').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom() })
+$('#roomCode').addEventListener('keydown', e => { if (e.key === 'Enter' && !(e.isComposing || e.keyCode === 229)) joinRoom() })
+$('#name').addEventListener('keydown', e => { if (e.key === 'Enter' && !(e.isComposing || e.keyCode === 229)) joinRoom() })
 // 离开房间：二次确认，避免误点直接退房
 $('#leaveBtn').addEventListener('click', () => {
   const btn = $('#leaveBtn')
@@ -1475,7 +1475,7 @@ $('#copyBtn').addEventListener('click', async () => {
 
 $('#chatBtn').addEventListener('click', () => toggleChat())
 $('#chatSend').addEventListener('click', sendChat)
-$('#chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat() })
+$('#chatInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !(e.isComposing || e.keyCode === 229)) sendChat() })
 
 $('#emojiBtn').addEventListener('click', togglePicker)
 $('#tabEmoji').addEventListener('click', () => showPickerTab('emoji'))
